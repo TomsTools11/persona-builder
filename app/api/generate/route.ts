@@ -121,8 +121,8 @@ export async function POST(request: NextRequest) {
           let fullResponse = "";
 
           const stream = anthropic.messages.stream({
-            model: "claude-sonnet-4-20250514",
-            max_tokens: 16000,
+            model: "claude-3-5-haiku-20241022",
+            max_tokens: 8000,
             messages: [
               {
                 role: "user",
@@ -160,27 +160,33 @@ export async function POST(request: NextRequest) {
           sendEvent({ type: "progress", step: "formatting", progress: 95 });
 
           // Extract JSON from the response
-          const jsonMatch = fullResponse.match(/```json\n?([\s\S]*?)\n?```/);
           let result;
 
-          if (jsonMatch) {
-            try {
-              result = JSON.parse(jsonMatch[1]);
-            } catch (parseError) {
-              console.error("Error parsing JSON response:", parseError);
-              // Try to parse the entire response as JSON
+          // First try to parse as raw JSON
+          try {
+            result = JSON.parse(fullResponse.trim());
+          } catch {
+            // Try to extract from markdown code block
+            const jsonMatch = fullResponse.match(/```(?:json)?\n?([\s\S]*?)\n?```/);
+            if (jsonMatch) {
               try {
-                result = JSON.parse(fullResponse);
+                result = JSON.parse(jsonMatch[1].trim());
               } catch {
                 throw new Error("Failed to parse generated personas");
               }
-            }
-          } else {
-            // Try to parse the entire response as JSON
-            try {
-              result = JSON.parse(fullResponse);
-            } catch {
-              throw new Error("No valid JSON found in response");
+            } else {
+              // Try to find JSON object in response
+              const jsonStart = fullResponse.indexOf('{');
+              const jsonEnd = fullResponse.lastIndexOf('}');
+              if (jsonStart !== -1 && jsonEnd !== -1) {
+                try {
+                  result = JSON.parse(fullResponse.slice(jsonStart, jsonEnd + 1));
+                } catch {
+                  throw new Error("No valid JSON found in response");
+                }
+              } else {
+                throw new Error("No valid JSON found in response");
+              }
             }
           }
 

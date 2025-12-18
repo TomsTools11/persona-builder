@@ -51,161 +51,84 @@ ${demographicsInstruction}
 
 ## Output Format
 
-Structure your response as valid JSON with the following format:
+Return ONLY valid JSON (no markdown code blocks). Use this exact structure:
 
-\`\`\`json
 {
   "personas": [
     {
       "id": "persona-1",
       "type": "The [Descriptive Name]",
-      "tagline": "Short archetype description",
+      "tagline": "One sentence archetype",
       "background": {
-        "summary": "2-3 sentence overview",
-        "workContext": "Their professional environment",
-        "domainFamiliarity": "Their familiarity with the product domain"
+        "summary": "2 sentence overview",
+        "workContext": "Their work environment",
+        "domainFamiliarity": "Low/Medium/High"
       },
       ${formData.includeDemographics.age || formData.includeDemographics.location || formData.includeDemographics.gender || formData.includeDemographics.incomeRange ? `"demographics": {
         ${formData.includeDemographics.age ? '"ageRange": "e.g., 28-35",' : ""}
-        ${formData.includeDemographics.location ? '"location": "e.g., Urban areas, US/Europe",' : ""}
+        ${formData.includeDemographics.location ? '"location": "e.g., Urban, US",' : ""}
         ${formData.includeDemographics.gender ? '"gender": "e.g., Any",' : ""}
         ${formData.includeDemographics.incomeRange ? '"incomeRange": "e.g., $60k-$90k",' : ""}
-        "education": "Highest education level"
+        "education": "Education level"
       },` : ""}
-      "role": {
-        "title": "Job title or role",
-        "responsibilities": ["Key responsibility 1", "Key responsibility 2"],
-        "teamStructure": "How they fit in their team/organization",
-        "decisionAuthority": "Their decision-making power"
-      },
       "goals": {
-        "primary": ["Primary goal 1", "Primary goal 2"],
-        "successDefinition": "What success looks like for them"
+        "primary": ["Goal 1", "Goal 2"],
+        "successDefinition": "What success looks like"
       },
       "motivations": {
-        "intrinsic": ["Internal motivator 1", "Internal motivator 2"],
-        "extrinsic": ["External motivator 1"],
-        "values": ["Core value 1", "Core value 2"]
-      },
-      "needs": {
-        "core": ["Must-have need 1", "Must-have need 2"],
-        "mustHaves": ["Critical requirement 1"],
-        "niceToHaves": ["Optional preference 1"]
+        "intrinsic": ["Motivator 1"],
+        "extrinsic": ["Motivator 1"],
+        "values": ["Value 1", "Value 2"]
       },
       "behaviors": {
-        "routines": ["Typical behavior 1", "Typical behavior 2"],
-        "frequency": "How often they would use the product",
-        "preferredChannels": ["Desktop", "Mobile", etc.]
+        "routines": ["Behavior 1", "Behavior 2"],
+        "frequency": "Daily/Weekly/Monthly",
+        "preferredChannels": ["Desktop", "Mobile"]
       },
       "painPoints": {
-        "challenges": ["Challenge 1", "Challenge 2", "Challenge 3"],
-        "triggers": ["What triggers frustration"],
-        "concerns": ["Risk or concern they have"]
+        "challenges": ["Challenge 1", "Challenge 2"],
+        "triggers": ["Trigger 1"],
+        "concerns": ["Concern 1"]
+      },
+      "needs": {
+        "core": ["Need 1", "Need 2"],
+        "mustHaves": ["Must-have 1"],
+        "niceToHaves": ["Nice-to-have 1"]
       },
       "tasks": {
-        "primary": ["Main task 1", "Main task 2"],
-        "secondary": ["Secondary task 1"],
-        "highValueScenarios": ["Critical scenario 1"]
-      },
-      ${formData.includeSections.journeyMap ? `"journeySnapshot": {
-        "discover": "How they find solutions",
-        "evaluate": "How they evaluate options",
-        "adopt": "What drives adoption",
-        "use": "How they use the product",
-        "advocate": "What makes them recommend"
-      },` : ""}
-      "context": {
-        "environment": "Where they use the product",
-        "timing": "When they use it",
-        "constraints": ["Time pressure", "Budget limits", etc.]
+        "primary": ["Task 1", "Task 2"],
+        "secondary": ["Task 1"],
+        "highValueScenarios": ["Scenario 1"]
       },
       "technology": {
-        "devices": ["Device 1", "Device 2"],
-        "tools": ["Tool they currently use"],
-        "techComfort": "Their comfort level with technology"
+        "devices": ["Device 1"],
+        "tools": ["Tool 1"],
+        "techComfort": "Low/Medium/High"
       },
-      "communication": {
-        "preferredTone": "Formal/Casual/Direct",
-        "terminologyLevel": "Novice/Intermediate/Expert"
-      },
-      "objections": {
-        "barriers": ["Why they might not adopt"],
-        "switchingCosts": ["What they'd give up"],
-        "requirements": ["What they need to proceed"]
-      },
-      "quotes": [
-        "Representative quote expressing their goals",
-        "Representative quote expressing their frustration"
-      ],
-      "scenarios": [
-        "Brief narrative scenario showing them using the product"
-      ],
+      "quotes": ["Quote expressing their main goal or frustration"],
       "insights": {
-        "keyTakeaways": ["Key insight for the team 1", "Key insight 2"],
-        "designImplications": ["How this affects design decisions"],
-        "opportunities": ["Opportunity to serve them better"]
-      },
-      "assumptions": {
-        "validated": ["What we're confident about"],
-        "toResearch": ["What needs further validation"]
+        "keyTakeaways": ["Insight 1", "Insight 2"],
+        "designImplications": ["Implication 1"],
+        "opportunities": ["Opportunity 1"]
       }
     }
   ]${formData.includeSections.interviewGuide ? `,
   "interviewGuide": {
-    "introduction": "Script for introducing the interview",
-    "warmupQuestions": ["Easy opening question 1", "Opening question 2"],
+    "introduction": "Brief intro script",
+    "warmupQuestions": ["Question 1", "Question 2"],
     "coreQuestions": [
-      {
-        "category": "Goals & Motivations",
-        "questions": ["Question 1", "Question 2"]
-      },
-      {
-        "category": "Current Behaviors",
-        "questions": ["Question 1", "Question 2"]
-      },
-      {
-        "category": "Pain Points",
-        "questions": ["Question 1", "Question 2"]
-      }
+      {"category": "Goals", "questions": ["Q1", "Q2"]},
+      {"category": "Pain Points", "questions": ["Q1", "Q2"]}
     ],
-    "closingQuestions": ["Closing question 1", "Any final thoughts?"]
-  }` : ""}${formData.includeSections.survey ? `,
-  "surveyGuide": {
-    "title": "User Research Survey",
-    "sections": [
-      {
-        "name": "Demographics",
-        "questions": [
-          {
-            "question": "What is your role?",
-            "type": "multiple_choice",
-            "options": ["Option 1", "Option 2", "Other"]
-          }
-        ]
-      },
-      {
-        "name": "Current Behaviors",
-        "questions": [
-          {
-            "question": "How often do you...?",
-            "type": "scale"
-          }
-        ]
-      }
-    ]
+    "closingQuestions": ["Final question"]
   }` : ""}
 }
-\`\`\`
 
-Important guidelines:
-1. Make each persona distinctly different - vary their goals, pain points, and behaviors
-2. Ground all details in the provided source material when possible
-3. Use realistic, specific details rather than generic descriptions
-4. Include actionable insights that product teams can use
-5. Write quotes that sound natural and authentic
-6. Ensure the JSON is valid and properly formatted
-
-Begin generating the personas now.`;
+Guidelines:
+1. Make each persona distinctly different
+2. Be specific and actionable, not generic
+3. Return ONLY the JSON, no explanations
+4. Ensure valid JSON format`;
 }
 
 function buildSectionsList(formData: PersonaFormData): string {
