@@ -37,12 +37,8 @@ export async function POST(request: NextRequest) {
 
     const personaFormData: PersonaFormData = JSON.parse(formDataJson);
 
-    // Validate required fields
-    if (
-      !personaFormData.productName ||
-      !personaFormData.websiteUrl ||
-      !personaFormData.targetAudience
-    ) {
+    // Validate required fields (websiteUrl is now optional)
+    if (!personaFormData.productName || !personaFormData.targetAudience) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
@@ -58,18 +54,20 @@ export async function POST(request: NextRequest) {
         };
 
         try {
-          // Step 1: Fetch primary website content
+          // Step 1: Fetch primary website content (if provided)
           sendEvent({ type: "progress", step: "fetching", progress: 10 });
 
           let websiteContent = "";
-          try {
-            const primaryWebsite = await fetchWebsiteContent(
-              personaFormData.websiteUrl
-            );
-            websiteContent = summarizeWebsiteContent(primaryWebsite);
-          } catch (error) {
-            console.error("Error fetching primary website:", error);
-            websiteContent = `Website URL: ${personaFormData.websiteUrl}\n(Content could not be fetched automatically)`;
+          if (personaFormData.websiteUrl) {
+            try {
+              const primaryWebsite = await fetchWebsiteContent(
+                personaFormData.websiteUrl
+              );
+              websiteContent = summarizeWebsiteContent(primaryWebsite);
+            } catch (error) {
+              console.error("Error fetching primary website:", error);
+              websiteContent = `Website URL: ${personaFormData.websiteUrl}\n(Content could not be fetched automatically)`;
+            }
           }
 
           // Step 2: Fetch competitor websites if provided

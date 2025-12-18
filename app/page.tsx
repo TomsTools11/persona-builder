@@ -75,7 +75,17 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error(`Generation failed: ${response.statusText}`);
+        // Try to get error details from response
+        let errorMessage = `Generation failed: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch {
+          // Use default error message
+        }
+        throw new Error(errorMessage);
       }
 
       const reader = response.body?.getReader();
@@ -85,6 +95,7 @@ export default function Home() {
 
       const decoder = new TextDecoder();
       let contentBuffer = "";
+      let receivedComplete = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -113,22 +124,37 @@ export default function Home() {
                 setProgress(100);
                 setGenerationResult(data.result);
                 setAppState("complete");
+                receivedComplete = true;
               } else if (data.type === "error") {
                 throw new Error(data.message);
               }
             } catch (e) {
-              // Skip invalid JSON lines
+              // Only throw if it's an actual Error we created
+              if (e instanceof Error && e.message !== "Unexpected end of JSON input") {
+                throw e;
+              }
+              // Otherwise skip invalid JSON lines
             }
           }
         }
       }
+
+      // If stream ended without complete event, something went wrong
+      if (!receivedComplete && appState === "generating") {
+        throw new Error("Generation incomplete - the request may have timed out. Please try again.");
+      }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
-        // User cancelled - reset to landing
-        setAppState("landing");
+        // User cancelled - reset to form
+        setAppState("form");
       } else {
-        setError(err instanceof Error ? err.message : "Generation failed");
-        setAppState("landing");
+        const errorMessage = err instanceof Error ? err.message : "Generation failed";
+        // Provide more helpful error for network issues
+        const finalMessage = errorMessage.includes("fetch") || errorMessage.includes("network")
+          ? "Network error - please check your connection and try again."
+          : errorMessage;
+        setError(finalMessage);
+        setAppState("form");
       }
     }
   };

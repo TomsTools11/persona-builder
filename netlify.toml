@@ -4,6 +4,11 @@
 
 [functions]
   node_bundler = "esbuild"
+  external_node_modules = ["@anthropic-ai/sdk"]
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Extend timeout for API routes (requires Netlify Pro for full 26s)
+[functions."api/*"]
+  # Note: SSE streaming should work with Next.js plugin
