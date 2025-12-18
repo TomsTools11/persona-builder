@@ -35,12 +35,12 @@ export default function OutputScreen({
         <StatCard
           icon={<ClipboardList className="h-5 w-5" />}
           label="Insights"
-          value={selectedPersona.insights.keyTakeaways.length}
+          value={selectedPersona.insights?.keyTakeaways?.length || 0}
         />
         <StatCard
           icon={<FileText className="h-5 w-5" />}
           label="Pain Points"
-          value={selectedPersona.painPoints.challenges.length}
+          value={selectedPersona.painPoints?.challenges?.length || 0}
         />
       </div>
 
@@ -142,92 +142,120 @@ export default function OutputScreen({
           )}
 
           {/* Goals */}
-          <Section title="Goals & Desired Outcomes">
-            <ul className="list-inside list-disc space-y-1 text-sm text-text-secondary">
-              {selectedPersona.goals.primary.map((goal, i) => (
-                <li key={i}>{goal}</li>
-              ))}
-            </ul>
-            <p className="mt-2 text-sm">
-              <strong className="text-white">Success looks like:</strong>{" "}
-              <span className="text-text-secondary">
-                {selectedPersona.goals.successDefinition}
-              </span>
-            </p>
-          </Section>
+          {(selectedPersona.goals?.primary?.length || selectedPersona.goals?.successDefinition) && (
+            <Section title="Goals & Desired Outcomes">
+              {selectedPersona.goals?.primary && selectedPersona.goals.primary.length > 0 && (
+                <ul className="list-inside list-disc space-y-1 text-sm text-text-secondary">
+                  {selectedPersona.goals.primary.map((goal, i) => (
+                    <li key={i}>{goal}</li>
+                  ))}
+                </ul>
+              )}
+              {selectedPersona.goals?.successDefinition && (
+                <p className="mt-2 text-sm">
+                  <strong className="text-white">Success looks like:</strong>{" "}
+                  <span className="text-text-secondary">
+                    {selectedPersona.goals.successDefinition}
+                  </span>
+                </p>
+              )}
+            </Section>
+          )}
 
           {/* Pain Points */}
-          <Section title="Pain Points & Frustrations">
-            <ul className="list-inside list-disc space-y-1 text-sm text-text-secondary">
-              {selectedPersona.painPoints.challenges.map((pain, i) => (
-                <li key={i}>{pain}</li>
-              ))}
-            </ul>
-          </Section>
-
-          {/* Motivations */}
-          <Section title="Motivations & Drivers">
-            <div className="space-y-2 text-sm">
-              <div>
-                <strong className="text-white">Intrinsic:</strong>
-                <p className="text-text-secondary">
-                  {selectedPersona.motivations.intrinsic.join(", ")}
-                </p>
-              </div>
-              <div>
-                <strong className="text-white">Values:</strong>
-                <p className="text-text-secondary">
-                  {selectedPersona.motivations.values.join(", ")}
-                </p>
-              </div>
-            </div>
-          </Section>
-
-          {/* Behaviors */}
-          <Section title="Behaviors & Habits">
-            <ul className="list-inside list-disc space-y-1 text-sm text-text-secondary">
-              {selectedPersona.behaviors.routines.map((behavior, i) => (
-                <li key={i}>{behavior}</li>
-              ))}
-            </ul>
-            <p className="mt-2 text-sm">
-              <strong className="text-white">Preferred channels:</strong>{" "}
-              <span className="text-text-secondary">
-                {selectedPersona.behaviors.preferredChannels.join(", ")}
-              </span>
-            </p>
-          </Section>
-
-          {/* Quotes */}
-          <Section title="Representative Quotes" className="md:col-span-2">
-            <div className="space-y-3">
-              {selectedPersona.quotes.map((quote, i) => (
-                <blockquote
-                  key={i}
-                  className="border-l-2 border-accent pl-4 text-sm italic text-text-secondary"
-                >
-                  &ldquo;{quote}&rdquo;
-                </blockquote>
-              ))}
-            </div>
-          </Section>
-
-          {/* Key Insights */}
-          <Section title="Key Insights & Design Implications" className="md:col-span-2">
-            <ul className="list-inside list-disc space-y-1 text-sm text-text-secondary">
-              {selectedPersona.insights.keyTakeaways.map((insight, i) => (
-                <li key={i}>{insight}</li>
-              ))}
-            </ul>
-            <div className="mt-4">
-              <strong className="text-white">Opportunities:</strong>
-              <ul className="mt-1 list-inside list-disc space-y-1 text-sm text-text-secondary">
-                {selectedPersona.insights.opportunities.map((opp, i) => (
-                  <li key={i}>{opp}</li>
+          {selectedPersona.painPoints?.challenges && selectedPersona.painPoints.challenges.length > 0 && (
+            <Section title="Pain Points & Frustrations">
+              <ul className="list-inside list-disc space-y-1 text-sm text-text-secondary">
+                {selectedPersona.painPoints.challenges.map((pain, i) => (
+                  <li key={i}>{pain}</li>
                 ))}
               </ul>
-            </div>
-          </Section>
+            </Section>
+          )}
+
+          {/* Motivations */}
+          {(selectedPersona.motivations?.intrinsic || selectedPersona.motivations?.values) && (
+            <Section title="Motivations & Drivers">
+              <div className="space-y-2 text-sm">
+                {selectedPersona.motivations?.intrinsic && selectedPersona.motivations.intrinsic.length > 0 && (
+                  <div>
+                    <strong className="text-white">Intrinsic:</strong>
+                    <p className="text-text-secondary">
+                      {selectedPersona.motivations.intrinsic.join(", ")}
+                    </p>
+                  </div>
+                )}
+                {selectedPersona.motivations?.values && selectedPersona.motivations.values.length > 0 && (
+                  <div>
+                    <strong className="text-white">Values:</strong>
+                    <p className="text-text-secondary">
+                      {selectedPersona.motivations.values.join(", ")}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Section>
+          )}
+
+          {/* Behaviors */}
+          {(selectedPersona.behaviors?.routines?.length || selectedPersona.behaviors?.preferredChannels?.length) && (
+            <Section title="Behaviors & Habits">
+              {selectedPersona.behaviors?.routines && selectedPersona.behaviors.routines.length > 0 && (
+                <ul className="list-inside list-disc space-y-1 text-sm text-text-secondary">
+                  {selectedPersona.behaviors.routines.map((behavior, i) => (
+                    <li key={i}>{behavior}</li>
+                  ))}
+                </ul>
+              )}
+              {selectedPersona.behaviors?.preferredChannels && selectedPersona.behaviors.preferredChannels.length > 0 && (
+                <p className="mt-2 text-sm">
+                  <strong className="text-white">Preferred channels:</strong>{" "}
+                  <span className="text-text-secondary">
+                    {selectedPersona.behaviors.preferredChannels.join(", ")}
+                  </span>
+                </p>
+              )}
+            </Section>
+          )}
+
+          {/* Quotes */}
+          {selectedPersona.quotes && selectedPersona.quotes.length > 0 && (
+            <Section title="Representative Quotes" className="md:col-span-2">
+              <div className="space-y-3">
+                {selectedPersona.quotes.map((quote, i) => (
+                  <blockquote
+                    key={i}
+                    className="border-l-2 border-accent pl-4 text-sm italic text-text-secondary"
+                  >
+                    &ldquo;{quote}&rdquo;
+                  </blockquote>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {/* Key Insights */}
+          {(selectedPersona.insights?.keyTakeaways?.length || selectedPersona.insights?.opportunities?.length) && (
+            <Section title="Key Insights & Design Implications" className="md:col-span-2">
+              {selectedPersona.insights?.keyTakeaways && selectedPersona.insights.keyTakeaways.length > 0 && (
+                <ul className="list-inside list-disc space-y-1 text-sm text-text-secondary">
+                  {selectedPersona.insights.keyTakeaways.map((insight, i) => (
+                    <li key={i}>{insight}</li>
+                  ))}
+                </ul>
+              )}
+              {selectedPersona.insights?.opportunities && selectedPersona.insights.opportunities.length > 0 && (
+                <div className="mt-4">
+                  <strong className="text-white">Opportunities:</strong>
+                  <ul className="mt-1 list-inside list-disc space-y-1 text-sm text-text-secondary">
+                    {selectedPersona.insights.opportunities.map((opp, i) => (
+                      <li key={i}>{opp}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </Section>
+          )}
         </div>
       </div>
 
