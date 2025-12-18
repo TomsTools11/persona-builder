@@ -96,31 +96,66 @@ export default function Home() {
       const decoder = new TextDecoder();
       let contentBuffer = "";
       let receivedComplete = false;
+      let sseBuffer = ""; // Buffer for incomplete SSE messages
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
+        sseBuffer += chunk;
 
+        // Process complete SSE messages (separated by double newlines)
+        const messages = sseBuffer.split("\n\n");
+        // Keep the last potentially incomplete message in the buffer
+        sseBuffer = messages.pop() || "";
+
+        for (const message of messages) {
+          const lines = message.split("\n");
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+
+                if (data.type === "progress") {
+                  setCurrentStep(data.step);
+                  setProgress(data.progress);
+                } else if (data.type === "content") {
+                  contentBuffer += data.data;
+                  // Update progress based on content length
+                  const estimatedProgress = Math.min(
+                    95,
+                    (contentBuffer.length / EXPECTED_CHARACTERS) * 100
+                  );
+                  setProgress(Math.max(progress, estimatedProgress));
+                } else if (data.type === "complete") {
+                  setProgress(100);
+                  setGenerationResult(data.result);
+                  setAppState("complete");
+                  receivedComplete = true;
+                } else if (data.type === "error") {
+                  throw new Error(data.message);
+                }
+              } catch (e) {
+                // Only throw if it's an actual Error we created
+                if (e instanceof Error && e.message !== "Unexpected end of JSON input") {
+                  throw e;
+                }
+                // Otherwise skip invalid JSON lines
+              }
+            }
+          }
+        }
+      }
+
+      // Process any remaining buffer content
+      if (sseBuffer.trim()) {
+        const lines = sseBuffer.split("\n");
         for (const line of lines) {
           if (line.startsWith("data: ")) {
             try {
               const data = JSON.parse(line.slice(6));
-
-              if (data.type === "progress") {
-                setCurrentStep(data.step);
-                setProgress(data.progress);
-              } else if (data.type === "content") {
-                contentBuffer += data.data;
-                // Update progress based on content length
-                const estimatedProgress = Math.min(
-                  95,
-                  (contentBuffer.length / EXPECTED_CHARACTERS) * 100
-                );
-                setProgress(Math.max(progress, estimatedProgress));
-              } else if (data.type === "complete") {
+              if (data.type === "complete") {
                 setProgress(100);
                 setGenerationResult(data.result);
                 setAppState("complete");
@@ -128,19 +163,15 @@ export default function Home() {
               } else if (data.type === "error") {
                 throw new Error(data.message);
               }
-            } catch (e) {
-              // Only throw if it's an actual Error we created
-              if (e instanceof Error && e.message !== "Unexpected end of JSON input") {
-                throw e;
-              }
-              // Otherwise skip invalid JSON lines
+            } catch {
+              // Skip invalid JSON
             }
           }
         }
       }
 
       // If stream ended without complete event, something went wrong
-      if (!receivedComplete && appState === "generating") {
+      if (!receivedComplete) {
         throw new Error("Generation incomplete - the request may have timed out. Please try again.");
       }
     } catch (err) {

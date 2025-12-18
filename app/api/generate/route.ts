@@ -159,40 +159,45 @@ export async function POST(request: NextRequest) {
           // Step 6: Parse and validate the response
           sendEvent({ type: "progress", step: "formatting", progress: 95 });
 
+          console.log("Raw response length:", fullResponse.length);
+          console.log("Response preview:", fullResponse.substring(0, 500));
+
           // Extract JSON from the response
           let result;
+          let jsonString = fullResponse.trim();
 
-          // First try to parse as raw JSON
-          try {
-            result = JSON.parse(fullResponse.trim());
-          } catch {
-            // Try to extract from markdown code block
-            const jsonMatch = fullResponse.match(/```(?:json)?\n?([\s\S]*?)\n?```/);
-            if (jsonMatch) {
-              try {
-                result = JSON.parse(jsonMatch[1].trim());
-              } catch {
-                throw new Error("Failed to parse generated personas");
-              }
-            } else {
-              // Try to find JSON object in response
-              const jsonStart = fullResponse.indexOf('{');
-              const jsonEnd = fullResponse.lastIndexOf('}');
-              if (jsonStart !== -1 && jsonEnd !== -1) {
-                try {
-                  result = JSON.parse(fullResponse.slice(jsonStart, jsonEnd + 1));
-                } catch {
-                  throw new Error("No valid JSON found in response");
-                }
-              } else {
-                throw new Error("No valid JSON found in response");
-              }
+          // Remove markdown code blocks if present
+          if (jsonString.includes("```")) {
+            const match = jsonString.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+            if (match) {
+              jsonString = match[1].trim();
             }
+          }
+
+          // Find the JSON object boundaries
+          const jsonStart = jsonString.indexOf('{');
+          const jsonEnd = jsonString.lastIndexOf('}');
+
+          if (jsonStart === -1 || jsonEnd === -1) {
+            console.error("No JSON object found in response");
+            throw new Error("No valid JSON found in response");
+          }
+
+          jsonString = jsonString.slice(jsonStart, jsonEnd + 1);
+
+          try {
+            result = JSON.parse(jsonString);
+          } catch (parseError) {
+            console.error("JSON parse error:", parseError);
+            console.error("Attempted to parse:", jsonString.substring(0, 1000));
+            throw new Error("Failed to parse generated personas - invalid JSON");
           }
 
           // Add metadata
           result.generatedAt = new Date().toISOString();
           result.productName = personaFormData.productName;
+
+          console.log("Parsed successfully, personas count:", result.personas?.length);
 
           // Send completion event
           sendEvent({
@@ -200,13 +205,15 @@ export async function POST(request: NextRequest) {
             result,
           });
 
+          console.log("Complete event sent, closing stream");
           controller.close();
         } catch (error) {
           console.error("Generation error:", error);
+          const errorMessage = error instanceof Error ? error.message : "Generation failed";
+          console.error("Sending error event:", errorMessage);
           sendEvent({
             type: "error",
-            message:
-              error instanceof Error ? error.message : "Generation failed",
+            message: errorMessage,
           });
           controller.close();
         }
