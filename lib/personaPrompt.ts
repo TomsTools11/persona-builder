@@ -14,121 +14,25 @@ interface PromptContext {
 export function buildPersonaPrompt(context: PromptContext): string {
   const { formData, websiteContent, competitorContent, fileContent } = context;
 
-  // Build the list of sections to include
-  const sectionsToInclude = buildSectionsList(formData);
+  // Truncate website content to avoid huge prompts
+  const truncatedWebsite = websiteContent.substring(0, 3000);
+  const truncatedCompetitor = competitorContent.substring(0, 1500);
+  const truncatedFiles = fileContent.substring(0, 1500);
 
-  // Build demographics instruction
-  const demographicsInstruction = buildDemographicsInstruction(formData);
+  return `Generate ${formData.personaCount} user personas for "${formData.productName}".
 
-  return `You are an expert user researcher with deep experience in creating actionable user personas for product teams. Your task is to analyze the provided information and generate ${formData.personaCount} distinct, realistic user personas.
+Target: ${formData.targetAudience}
+${formData.jobToBeDone ? `Job: ${formData.jobToBeDone}` : ""}
 
-## Context
+Context:
+${truncatedWebsite || "No website provided"}
+${truncatedCompetitor ? `\nCompetitors:\n${truncatedCompetitor}` : ""}
+${truncatedFiles ? `\nResearch:\n${truncatedFiles}` : ""}
 
-**Product/Feature:** ${formData.productName}
+Return JSON only:
+{"personas":[{"id":"persona-1","type":"The [Name]","tagline":"One line","background":{"summary":"2 sentences","workContext":"Environment","domainFamiliarity":"Low/Med/High"}${formData.includeDemographics.age || formData.includeDemographics.location ? `,"demographics":{"ageRange":"25-34","location":"Urban"}` : ""},"goals":{"primary":["Goal 1","Goal 2"],"successDefinition":"Success metric"},"painPoints":{"challenges":["Challenge 1","Challenge 2"],"triggers":["Trigger"]},"behaviors":{"routines":["Behavior 1"],"frequency":"Daily/Weekly"},"needs":{"core":["Need 1"],"mustHaves":["Must have"]},"technology":{"devices":["Device"],"techComfort":"Medium"},"quotes":["Quote"],"insights":{"keyTakeaways":["Insight 1"],"opportunities":["Opportunity"]}}]${formData.includeSections.interviewGuide ? `,"interviewGuide":{"introduction":"Intro","warmupQuestions":["Q1"],"coreQuestions":[{"category":"Goals","questions":["Q1","Q2"]}],"closingQuestions":["Final"]}` : ""}}
 
-**Target Audience Description:** ${formData.targetAudience}
-
-${formData.jobToBeDone ? `**Job to be Done:** ${formData.jobToBeDone}` : ""}
-
-## Source Information
-
-### Primary Website
-${websiteContent}
-
-${competitorContent ? `### Competitor Analysis\n${competitorContent}` : ""}
-
-${fileContent ? `### Additional Research Materials\n${fileContent}` : ""}
-
-## Instructions
-
-Generate ${formData.personaCount} distinct user personas that represent different segments of the target audience. Each persona should be realistic, actionable, and grounded in the provided information.
-
-For each persona, provide the following sections:
-
-${sectionsToInclude}
-
-${demographicsInstruction}
-
-## Output Format
-
-Return ONLY valid JSON (no markdown code blocks). Use this exact structure:
-
-{
-  "personas": [
-    {
-      "id": "persona-1",
-      "type": "The [Descriptive Name]",
-      "tagline": "One sentence archetype",
-      "background": {
-        "summary": "2 sentence overview",
-        "workContext": "Their work environment",
-        "domainFamiliarity": "Low/Medium/High"
-      },
-      ${formData.includeDemographics.age || formData.includeDemographics.location || formData.includeDemographics.gender || formData.includeDemographics.incomeRange ? `"demographics": {
-        ${formData.includeDemographics.age ? '"ageRange": "e.g., 28-35",' : ""}
-        ${formData.includeDemographics.location ? '"location": "e.g., Urban, US",' : ""}
-        ${formData.includeDemographics.gender ? '"gender": "e.g., Any",' : ""}
-        ${formData.includeDemographics.incomeRange ? '"incomeRange": "e.g., $60k-$90k",' : ""}
-        "education": "Education level"
-      },` : ""}
-      "goals": {
-        "primary": ["Goal 1", "Goal 2"],
-        "successDefinition": "What success looks like"
-      },
-      "motivations": {
-        "intrinsic": ["Motivator 1"],
-        "extrinsic": ["Motivator 1"],
-        "values": ["Value 1", "Value 2"]
-      },
-      "behaviors": {
-        "routines": ["Behavior 1", "Behavior 2"],
-        "frequency": "Daily/Weekly/Monthly",
-        "preferredChannels": ["Desktop", "Mobile"]
-      },
-      "painPoints": {
-        "challenges": ["Challenge 1", "Challenge 2"],
-        "triggers": ["Trigger 1"],
-        "concerns": ["Concern 1"]
-      },
-      "needs": {
-        "core": ["Need 1", "Need 2"],
-        "mustHaves": ["Must-have 1"],
-        "niceToHaves": ["Nice-to-have 1"]
-      },
-      "tasks": {
-        "primary": ["Task 1", "Task 2"],
-        "secondary": ["Task 1"],
-        "highValueScenarios": ["Scenario 1"]
-      },
-      "technology": {
-        "devices": ["Device 1"],
-        "tools": ["Tool 1"],
-        "techComfort": "Low/Medium/High"
-      },
-      "quotes": ["Quote expressing their main goal or frustration"],
-      "insights": {
-        "keyTakeaways": ["Insight 1", "Insight 2"],
-        "designImplications": ["Implication 1"],
-        "opportunities": ["Opportunity 1"]
-      }
-    }
-  ]${formData.includeSections.interviewGuide ? `,
-  "interviewGuide": {
-    "introduction": "Brief intro script",
-    "warmupQuestions": ["Question 1", "Question 2"],
-    "coreQuestions": [
-      {"category": "Goals", "questions": ["Q1", "Q2"]},
-      {"category": "Pain Points", "questions": ["Q1", "Q2"]}
-    ],
-    "closingQuestions": ["Final question"]
-  }` : ""}
-}
-
-Guidelines:
-1. Make each persona distinctly different
-2. Be specific and actionable, not generic
-3. Return ONLY the JSON, no explanations
-4. Ensure valid JSON format`;
+Rules: Be specific, not generic. Each persona must be different. Valid JSON only.`;
 }
 
 function buildSectionsList(formData: PersonaFormData): string {
