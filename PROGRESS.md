@@ -2,7 +2,7 @@
 
 ## Current Status: COMPLETE - Ready for Deployment
 
-Last updated: December 17, 2025
+Last updated: December 18, 2025
 
 ---
 
@@ -56,6 +56,17 @@ Last updated: December 17, 2025
 - .env.local.example with safe placeholders
 - Ready for Netlify deployment
 
+### Phase 9: Marketing Landing Page ✅
+- Full marketing landing page (components/LandingPage.tsx)
+- Hero section with badge, headline, URL input, example links
+- Preview section with mock persona cards
+- "How It Works" 3-step section
+- "Everything You Need" 6-feature grid
+- "Professional PDF Output" section with checklist
+- CTA section and footer
+- New 'form' state for showing InputForm separately
+- URL prefill when clicking example links
+
 ---
 
 ## File Structure
@@ -73,7 +84,8 @@ persona-builder/
 │   ├── Header.tsx
 │   ├── InputForm.tsx
 │   ├── GenerationProgress.tsx
-│   └── OutputScreen.tsx
+│   ├── OutputScreen.tsx
+│   └── LandingPage.tsx
 ├── lib/
 │   ├── websiteFetcher.ts     # Jina AI Reader
 │   ├── fileProcessors.ts     # PDF/DOCX parsing

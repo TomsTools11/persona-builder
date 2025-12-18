@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import InputForm from "@/components/InputForm";
 import GenerationProgress from "@/components/GenerationProgress";
 import OutputScreen from "@/components/OutputScreen";
+import LandingPage from "@/components/LandingPage";
 import type { AppState, PersonaFormData, GenerationResult } from "@/types";
 
 // Expected character count for progress estimation
@@ -20,6 +21,14 @@ export default function Home() {
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleGetStarted = () => {
+    setAppState("form");
+  };
+
+  const handleBackToLanding = () => {
+    setAppState("landing");
+  };
 
   // Timer for elapsed time
   useEffect(() => {
@@ -169,11 +178,30 @@ export default function Home() {
     }
   };
 
+  // Determine back button behavior based on state
+  const getBackHandler = () => {
+    switch (appState) {
+      case "form":
+        return handleBackToLanding;
+      case "generating":
+        return handleCancel;
+      case "complete":
+        return handleGenerateNew;
+      default:
+        return undefined;
+    }
+  };
+
+  // Landing page has its own layout
+  if (appState === "landing") {
+    return <LandingPage onGetStarted={handleGetStarted} />;
+  }
+
   return (
     <div className="min-h-screen bg-primary-dark">
       <Header
-        showBackButton={appState !== "landing"}
-        onBack={appState === "complete" ? handleGenerateNew : handleCancel}
+        showBackButton={true}
+        onBack={getBackHandler()}
       />
 
       <main className="mx-auto max-w-container px-6 py-8">
@@ -184,8 +212,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* Landing State */}
-        {appState === "landing" && (
+        {/* Form State */}
+        {appState === "form" && (
           <div className="mx-auto max-w-2xl">
             <div className="mb-8 text-center">
               <h1 className="text-display text-white">

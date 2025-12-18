@@ -25,7 +25,7 @@ export interface PersonaFormData {
 }
 
 // Application State
-export type AppState = "landing" | "generating" | "complete";
+export type AppState = "landing" | "form" | "generating" | "complete";
 
 // Persona Output Types
 export interface Persona {

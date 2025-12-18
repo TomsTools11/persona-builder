@@ -35,7 +35,7 @@ export default function InputForm({ onSubmit, isGenerating }: InputFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.productName || !formData.websiteUrl || !formData.targetAudience) {
+    if (!formData.productName || !formData.targetAudience) {
       alert("Please fill in all required fields");
       return;
     }
@@ -107,7 +107,7 @@ export default function InputForm({ onSubmit, isGenerating }: InputFormProps) {
         {/* Website URL */}
         <div className="space-y-2">
           <label htmlFor="websiteUrl" className="block text-sm font-medium text-white">
-            Website URL <span className="text-error">*</span>
+            Website URL <span className="text-text-secondary text-xs">(optional)</span>
           </label>
           <div className="relative">
             <Globe className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-text-secondary" />
@@ -121,7 +121,6 @@ export default function InputForm({ onSubmit, isGenerating }: InputFormProps) {
               placeholder="https://example.com"
               className="w-full rounded-lg border border-surface-light bg-surface py-3 pl-10 pr-4 text-white placeholder-text-secondary transition-colors focus:border-accent focus:outline-none"
               disabled={isGenerating}
-              required
             />
           </div>
         </div>

@@ -4,9 +4,9 @@
 
 The **Persona Builder** turns a website URL and/or uploaded research materials into a set of clear, actionable user personas. It extracts likely user segments, goals, pain points, and behaviors, then outputs a polished PDF with **personas, JTBD statements, key scenarios, and a ready-to-use interview/survey guide**—so teams can align on who they’re building for and make better product and messaging decisions fast.
 
-## Inputs:
+## Inputs
 
-### Required:
+### Required
 
 - **Product/feature name**
 - **Website URL** (or app/store link)
@@ -30,10 +30,10 @@ The **Persona Builder** turns a website URL and/or uploaded research materials i
   - Gender
   - Income range
 
-### To Include in final Output:
+### To Include in final Output
 
 - **Persona header**
-  - Persona Type
+  - Persona Typee
   - Short tagline / archetype label
 - **Background & context**
   - Concise summary
