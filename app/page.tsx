@@ -8,9 +8,6 @@ import OutputScreen from "@/components/OutputScreen";
 import LandingPage from "@/components/LandingPage";
 import type { AppState, PersonaFormData, GenerationResult } from "@/types";
 
-// Expected character count for progress estimation
-const EXPECTED_CHARACTERS = 25000;
-
 export default function Home() {
   const [appState, setAppState] = useState<AppState>("landing");
   const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null);
@@ -68,6 +65,7 @@ export default function Home() {
         apiFormData.append("files", file);
       });
 
+      // Start generation - returns immediately with job ID
       const response = await fetch("/api/generate", {
         method: "POST",
         body: apiFormData,
@@ -75,112 +73,68 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        // Try to get error details from response
-        let errorMessage = `Generation failed: ${response.statusText}`;
-        try {
-          const errorData = await response.json();
-          if (errorData.error) {
-            errorMessage = errorData.error;
-          }
-        } catch {
-          // Use default error message
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Generation failed: ${response.statusText}`);
+      }
+
+      const { jobId } = await response.json();
+
+      if (!jobId) {
+        throw new Error("No job ID returned");
+      }
+
+      // Poll for status
+      const pollInterval = 1000; // 1 second
+      const maxPolls = 120; // 2 minutes max
+      let polls = 0;
+
+      const poll = async (): Promise<void> => {
+        if (abortControllerRef.current?.signal.aborted) {
+          setAppState("form");
+          return;
         }
-        throw new Error(errorMessage);
-      }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error("No response body");
-      }
-
-      const decoder = new TextDecoder();
-      let contentBuffer = "";
-      let receivedComplete = false;
-      let sseBuffer = ""; // Buffer for incomplete SSE messages
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        sseBuffer += chunk;
-
-        // Process complete SSE messages (separated by double newlines)
-        const messages = sseBuffer.split("\n\n");
-        // Keep the last potentially incomplete message in the buffer
-        sseBuffer = messages.pop() || "";
-
-        for (const message of messages) {
-          const lines = message.split("\n");
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              try {
-                const data = JSON.parse(line.slice(6));
-
-                if (data.type === "progress") {
-                  setCurrentStep(data.step);
-                  setProgress(data.progress);
-                } else if (data.type === "content") {
-                  contentBuffer += data.data;
-                  // Update progress based on content length
-                  const estimatedProgress = Math.min(
-                    95,
-                    (contentBuffer.length / EXPECTED_CHARACTERS) * 100
-                  );
-                  setProgress(Math.max(progress, estimatedProgress));
-                } else if (data.type === "complete") {
-                  setProgress(100);
-                  setGenerationResult(data.result);
-                  setAppState("complete");
-                  receivedComplete = true;
-                } else if (data.type === "error") {
-                  throw new Error(data.message);
-                }
-              } catch (e) {
-                // Only throw if it's an actual Error we created
-                if (e instanceof Error && e.message !== "Unexpected end of JSON input") {
-                  throw e;
-                }
-                // Otherwise skip invalid JSON lines
-              }
-            }
-          }
+        polls++;
+        if (polls > maxPolls) {
+          throw new Error("Generation timed out. Please try again.");
         }
-      }
 
-      // Process any remaining buffer content
-      if (sseBuffer.trim()) {
-        const lines = sseBuffer.split("\n");
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.type === "complete") {
-                setProgress(100);
-                setGenerationResult(data.result);
-                setAppState("complete");
-                receivedComplete = true;
-              } else if (data.type === "error") {
-                throw new Error(data.message);
-              }
-            } catch {
-              // Skip invalid JSON
-            }
-          }
+        const statusResponse = await fetch(`/api/status/${jobId}`);
+
+        if (!statusResponse.ok) {
+          throw new Error("Failed to check generation status");
         }
-      }
 
-      // If stream ended without complete event, something went wrong
-      if (!receivedComplete) {
-        throw new Error("Generation incomplete - the request may have timed out. Please try again.");
-      }
+        const status = await statusResponse.json();
+
+        // Update progress UI
+        setProgress(status.progress || 0);
+        if (status.status) {
+          setCurrentStep(status.status);
+        }
+
+        if (status.status === "completed" && status.result) {
+          setProgress(100);
+          setGenerationResult(status.result);
+          setAppState("complete");
+          return;
+        }
+
+        if (status.status === "error") {
+          throw new Error(status.error || "Generation failed");
+        }
+
+        // Continue polling
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        return poll();
+      };
+
+      await poll();
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
-        // User cancelled - reset to form
         setAppState("form");
       } else {
         const errorMessage = err instanceof Error ? err.message : "Generation failed";
-        // Provide more helpful error for network issues
         const finalMessage = errorMessage.includes("fetch") || errorMessage.includes("network")
           ? "Network error - please check your connection and try again."
           : errorMessage;

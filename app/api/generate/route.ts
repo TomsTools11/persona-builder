@@ -1,25 +1,25 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import {
   fetchWebsiteContent,
-  fetchMultipleWebsites,
   summarizeWebsiteContent,
 } from "@/lib/websiteFetcher";
 import { processFile, formatFilesForPrompt } from "@/lib/fileProcessors";
 import { buildPersonaPrompt } from "@/lib/personaPrompt";
+import { createJob, updateJob, generateJobId } from "@/lib/job-store";
 import type { PersonaFormData } from "@/types";
 
 // Configure for longer running requests
 export const runtime = "nodejs";
-export const maxDuration = 300; // 5 minutes
+export const maxDuration = 60; // 60 seconds max
 
 export async function POST(request: NextRequest) {
   // Check for API key
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return new Response(
-      JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+    return NextResponse.json(
+      { error: "ANTHROPIC_API_KEY not configured" },
+      { status: 500 }
     );
   }
 
@@ -29,211 +29,175 @@ export async function POST(request: NextRequest) {
     const formDataJson = formData.get("formData");
 
     if (!formDataJson || typeof formDataJson !== "string") {
-      return new Response(JSON.stringify({ error: "Missing form data" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+      return NextResponse.json(
+        { error: "Missing form data" },
+        { status: 400 }
+      );
     }
 
     const personaFormData: PersonaFormData = JSON.parse(formDataJson);
 
-    // Validate required fields (websiteUrl is now optional)
+    // Validate required fields
     if (!personaFormData.productName || !personaFormData.targetAudience) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
       );
     }
 
-    // Create SSE response
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        const sendEvent = (data: object) => {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-        };
+    // Create job and return ID immediately
+    const jobId = generateJobId();
+    createJob(jobId);
 
-        try {
-          // Step 1: Fetch primary website content (if provided)
-          sendEvent({ type: "progress", step: "fetching", progress: 10 });
+    // Process files synchronously before starting background work
+    const files = formData.getAll("files") as File[];
+    const fileBuffers: { buffer: Buffer; name: string; type: string }[] = [];
 
-          let websiteContent = "";
-          if (personaFormData.websiteUrl) {
-            try {
-              const primaryWebsite = await fetchWebsiteContent(
-                personaFormData.websiteUrl
-              );
-              websiteContent = summarizeWebsiteContent(primaryWebsite);
-            } catch (error) {
-              console.error("Error fetching primary website:", error);
-              websiteContent = `Website URL: ${personaFormData.websiteUrl}\n(Content could not be fetched automatically)`;
-            }
-          }
+    for (const file of files) {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      fileBuffers.push({ buffer, name: file.name, type: file.type });
+    }
 
-          // Step 2: Fetch competitor websites if provided
-          sendEvent({ type: "progress", step: "fetching", progress: 25 });
+    // Start background processing (fire-and-forget)
+    processPersonaGeneration(jobId, personaFormData, fileBuffers, apiKey).catch(
+      (error) => {
+        console.error("Background processing error:", error);
+        updateJob(jobId, {
+          status: "error",
+          error: error instanceof Error ? error.message : "Generation failed",
+        });
+      }
+    );
 
-          let competitorContent = "";
-          if (personaFormData.competitorUrls.length > 0) {
-            const competitorWebsites = await fetchMultipleWebsites(
-              personaFormData.competitorUrls
-            );
-            competitorContent = competitorWebsites
-              .map((site) => summarizeWebsiteContent(site))
-              .join("\n\n---\n\n");
-          }
-
-          // Step 3: Process uploaded files
-          sendEvent({ type: "progress", step: "analyzing", progress: 35 });
-
-          const files = formData.getAll("files") as File[];
-          let fileContent = "";
-
-          if (files.length > 0) {
-            const processedFiles = [];
-            for (const file of files) {
-              try {
-                const buffer = Buffer.from(await file.arrayBuffer());
-                const processed = await processFile(buffer, file.name, file.type);
-                processedFiles.push(processed);
-              } catch (error) {
-                console.error(`Error processing file ${file.name}:`, error);
-              }
-            }
-            fileContent = formatFilesForPrompt(processedFiles);
-          }
-
-          // Step 4: Build the prompt
-          sendEvent({ type: "progress", step: "analyzing", progress: 45 });
-
-          const prompt = buildPersonaPrompt({
-            formData: personaFormData,
-            websiteContent,
-            competitorContent,
-            fileContent,
-          });
-
-          // Step 5: Call Claude API with streaming
-          sendEvent({ type: "progress", step: "generating", progress: 50 });
-
-          const anthropic = new Anthropic({ apiKey });
-
-          let fullResponse = "";
-
-          const stream = anthropic.messages.stream({
-            model: "claude-haiku-4-5-20251001",
-            max_tokens: 4000,
-            messages: [
-              {
-                role: "user",
-                content: prompt,
-              },
-            ],
-          });
-
-          // Process streaming response
-          for await (const event of stream) {
-            if (
-              event.type === "content_block_delta" &&
-              event.delta.type === "text_delta"
-            ) {
-              const text = event.delta.text;
-              fullResponse += text;
-
-              // Send content chunk
-              sendEvent({ type: "content", data: text });
-
-              // Update progress based on response length
-              const estimatedProgress = Math.min(
-                95,
-                50 + (fullResponse.length / 20000) * 45
-              );
-              sendEvent({
-                type: "progress",
-                step: "generating",
-                progress: estimatedProgress,
-              });
-            }
-          }
-
-          // Step 6: Parse and validate the response
-          sendEvent({ type: "progress", step: "formatting", progress: 95 });
-
-          console.log("Raw response length:", fullResponse.length);
-          console.log("Response preview:", fullResponse.substring(0, 500));
-
-          // Extract JSON from the response
-          let result;
-          let jsonString = fullResponse.trim();
-
-          // Remove markdown code blocks if present
-          if (jsonString.includes("```")) {
-            const match = jsonString.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-            if (match) {
-              jsonString = match[1].trim();
-            }
-          }
-
-          // Find the JSON object boundaries
-          const jsonStart = jsonString.indexOf('{');
-          const jsonEnd = jsonString.lastIndexOf('}');
-
-          if (jsonStart === -1 || jsonEnd === -1) {
-            console.error("No JSON object found in response");
-            throw new Error("No valid JSON found in response");
-          }
-
-          jsonString = jsonString.slice(jsonStart, jsonEnd + 1);
-
-          try {
-            result = JSON.parse(jsonString);
-          } catch (parseError) {
-            console.error("JSON parse error:", parseError);
-            console.error("Attempted to parse:", jsonString.substring(0, 1000));
-            throw new Error("Failed to parse generated personas - invalid JSON");
-          }
-
-          // Add metadata
-          result.generatedAt = new Date().toISOString();
-          result.productName = personaFormData.productName;
-
-          console.log("Parsed successfully, personas count:", result.personas?.length);
-
-          // Send completion event
-          sendEvent({
-            type: "complete",
-            result,
-          });
-
-          console.log("Complete event sent, closing stream");
-          controller.close();
-        } catch (error) {
-          console.error("Generation error:", error);
-          const errorMessage = error instanceof Error ? error.message : "Generation failed";
-          console.error("Sending error event:", errorMessage);
-          sendEvent({
-            type: "error",
-            message: errorMessage,
-          });
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
-    });
+    // Return job ID immediately
+    return NextResponse.json({ jobId, status: "pending" });
   } catch (error) {
     console.error("Request error:", error);
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Request failed",
-      }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Request failed" },
+      { status: 500 }
     );
+  }
+}
+
+async function processPersonaGeneration(
+  jobId: string,
+  personaFormData: PersonaFormData,
+  fileBuffers: { buffer: Buffer; name: string; type: string }[],
+  apiKey: string
+) {
+  try {
+    // Step 1: Fetch website content
+    updateJob(jobId, { status: "fetching", progress: 10 });
+
+    let websiteContent = "";
+    if (personaFormData.websiteUrl) {
+      try {
+        const primaryWebsite = await fetchWebsiteContent(
+          personaFormData.websiteUrl
+        );
+        websiteContent = summarizeWebsiteContent(primaryWebsite);
+      } catch (error) {
+        console.error("Error fetching website:", error);
+        websiteContent = `Website: ${personaFormData.websiteUrl} (could not fetch)`;
+      }
+    }
+
+    updateJob(jobId, { status: "fetching", progress: 25 });
+
+    // Step 2: Process files
+    updateJob(jobId, { status: "analyzing", progress: 35 });
+
+    let fileContent = "";
+    if (fileBuffers.length > 0) {
+      const processedFiles = [];
+      for (const { buffer, name, type } of fileBuffers) {
+        try {
+          const processed = await processFile(buffer, name, type);
+          processedFiles.push(processed);
+        } catch (error) {
+          console.error(`Error processing file ${name}:`, error);
+        }
+      }
+      fileContent = formatFilesForPrompt(processedFiles);
+    }
+
+    // Step 3: Build prompt
+    updateJob(jobId, { status: "analyzing", progress: 45 });
+
+    const prompt = buildPersonaPrompt({
+      formData: personaFormData,
+      websiteContent,
+      competitorContent: "", // Skip competitors for speed
+      fileContent,
+    });
+
+    // Step 4: Call Claude API (non-streaming for speed)
+    updateJob(jobId, { status: "generating", progress: 50 });
+
+    const anthropic = new Anthropic({ apiKey });
+
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 4000,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    updateJob(jobId, { status: "generating", progress: 85 });
+
+    // Step 5: Parse response
+    updateJob(jobId, { status: "formatting", progress: 90 });
+
+    const textContent = response.content.find((c) => c.type === "text");
+    if (!textContent || textContent.type !== "text") {
+      throw new Error("No text response from Claude");
+    }
+
+    let jsonString = textContent.text.trim();
+
+    // Remove markdown code blocks if present
+    if (jsonString.includes("```")) {
+      const match = jsonString.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (match) {
+        jsonString = match[1].trim();
+      }
+    }
+
+    // Find JSON boundaries
+    const jsonStart = jsonString.indexOf("{");
+    const jsonEnd = jsonString.lastIndexOf("}");
+
+    if (jsonStart === -1 || jsonEnd === -1) {
+      throw new Error("No valid JSON in response");
+    }
+
+    jsonString = jsonString.slice(jsonStart, jsonEnd + 1);
+
+    let result;
+    try {
+      result = JSON.parse(jsonString);
+    } catch {
+      console.error("JSON parse error, response:", jsonString.substring(0, 500));
+      throw new Error("Failed to parse personas - invalid JSON");
+    }
+
+    // Add metadata
+    result.generatedAt = new Date().toISOString();
+    result.productName = personaFormData.productName;
+
+    // Complete!
+    updateJob(jobId, {
+      status: "completed",
+      progress: 100,
+      result,
+    });
+
+    console.log(`Job ${jobId} completed with ${result.personas?.length} personas`);
+  } catch (error) {
+    console.error(`Job ${jobId} failed:`, error);
+    updateJob(jobId, {
+      status: "error",
+      error: error instanceof Error ? error.message : "Generation failed",
+    });
   }
 }
