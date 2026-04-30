@@ -5,15 +5,12 @@ import {
   summarizeWebsiteContent,
 } from "@/lib/websiteFetcher";
 import { buildPersonaPrompt } from "@/lib/personaPrompt";
-import { createJob, updateJob, generateJobId } from "@/lib/job-store";
 import type { PersonaFormData } from "@/types";
 
-// Configure for longer running requests
 export const runtime = "nodejs";
-export const maxDuration = 60; // 60 seconds max
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
-  // Check for API key
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
@@ -22,68 +19,34 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  let personaFormData: PersonaFormData;
   try {
-    const personaFormData: PersonaFormData = await request.json();
+    personaFormData = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
-    // Validate required fields
-    if (
-      !personaFormData?.description?.trim() ||
-      !personaFormData?.websiteUrl?.trim()
-    ) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    // Create job and return ID immediately
-    const jobId = generateJobId();
-    createJob(jobId);
-
-    // Start background processing (fire-and-forget)
-    processPersonaGeneration(jobId, personaFormData, apiKey).catch((error) => {
-      console.error("Background processing error:", error);
-      updateJob(jobId, {
-        status: "error",
-        error: error instanceof Error ? error.message : "Generation failed",
-      });
-    });
-
-    // Return job ID immediately
-    return NextResponse.json({ jobId, status: "pending" });
-  } catch (error) {
-    console.error("Request error:", error);
+  if (
+    !personaFormData?.description?.trim() ||
+    !personaFormData?.websiteUrl?.trim()
+  ) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Request failed" },
-      { status: 500 }
+      { error: "Missing required fields" },
+      { status: 400 }
     );
   }
-}
 
-async function processPersonaGeneration(
-  jobId: string,
-  personaFormData: PersonaFormData,
-  apiKey: string
-) {
   try {
-    // Step 1: Fetch website content
-    updateJob(jobId, { status: "fetching", progress: 10 });
-
     let websiteContent = "";
-    if (personaFormData.websiteUrl) {
-      try {
-        const primaryWebsite = await fetchWebsiteContent(
-          personaFormData.websiteUrl
-        );
-        websiteContent = summarizeWebsiteContent(primaryWebsite);
-      } catch (error) {
-        console.error("Error fetching website:", error);
-        websiteContent = `Website: ${personaFormData.websiteUrl} (could not fetch)`;
-      }
+    try {
+      const primaryWebsite = await fetchWebsiteContent(
+        personaFormData.websiteUrl
+      );
+      websiteContent = summarizeWebsiteContent(primaryWebsite);
+    } catch (error) {
+      console.error("Error fetching website:", error);
+      websiteContent = `Website: ${personaFormData.websiteUrl} (could not fetch)`;
     }
-
-    // Step 2: Build prompt
-    updateJob(jobId, { status: "analyzing", progress: 45 });
 
     const prompt = buildPersonaPrompt({
       description: personaFormData.description,
@@ -91,21 +54,12 @@ async function processPersonaGeneration(
       websiteContent,
     });
 
-    // Step 3: Call Claude API (non-streaming for speed)
-    updateJob(jobId, { status: "generating", progress: 50 });
-
     const anthropic = new Anthropic({ apiKey });
-
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 4000,
       messages: [{ role: "user", content: prompt }],
     });
-
-    updateJob(jobId, { status: "generating", progress: 85 });
-
-    // Step 4: Parse response
-    updateJob(jobId, { status: "formatting", progress: 90 });
 
     const textContent = response.content.find((c) => c.type === "text");
     if (!textContent || textContent.type !== "text") {
@@ -114,7 +68,6 @@ async function processPersonaGeneration(
 
     let jsonString = textContent.text.trim();
 
-    // Remove markdown code blocks if present
     if (jsonString.includes("```")) {
       const match = jsonString.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
       if (match) {
@@ -122,14 +75,11 @@ async function processPersonaGeneration(
       }
     }
 
-    // Find JSON boundaries
     const jsonStart = jsonString.indexOf("{");
     const jsonEnd = jsonString.lastIndexOf("}");
-
     if (jsonStart === -1 || jsonEnd === -1) {
       throw new Error("No valid JSON in response");
     }
-
     jsonString = jsonString.slice(jsonStart, jsonEnd + 1);
 
     let result;
@@ -140,26 +90,20 @@ async function processPersonaGeneration(
       throw new Error("Failed to parse personas - invalid JSON");
     }
 
-    // Add metadata; fall back to URL host if Claude didn't include a name
     result.generatedAt = new Date().toISOString();
     if (!result.productName || typeof result.productName !== "string") {
       result.productName = deriveProductNameFromUrl(personaFormData.websiteUrl);
     }
 
-    // Complete!
-    updateJob(jobId, {
-      status: "completed",
-      progress: 100,
-      result,
-    });
-
-    console.log(`Job ${jobId} completed with ${result.personas?.length} personas`);
+    return NextResponse.json(result);
   } catch (error) {
-    console.error(`Job ${jobId} failed:`, error);
-    updateJob(jobId, {
-      status: "error",
-      error: error instanceof Error ? error.message : "Generation failed",
-    });
+    console.error("Generation failed:", error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Generation failed",
+      },
+      { status: 500 }
+    );
   }
 }
 
