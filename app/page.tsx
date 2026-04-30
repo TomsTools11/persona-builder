@@ -11,8 +11,6 @@ import type { AppState, PersonaFormData, GenerationResult } from "@/types";
 export default function Home() {
   const [appState, setAppState] = useState<AppState>("landing");
   const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [currentStep, setCurrentStep] = useState("fetching");
   const [elapsedTime, setElapsedTime] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,14 +47,11 @@ export default function Home() {
 
   const handleSubmit = async (formData: PersonaFormData) => {
     setAppState("generating");
-    setProgress(0);
-    setCurrentStep("fetching");
     setError(null);
 
     abortControllerRef.current = new AbortController();
 
     try {
-      // Start generation - returns immediately with job ID
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -69,59 +64,9 @@ export default function Home() {
         throw new Error(errorData.error || `Generation failed: ${response.statusText}`);
       }
 
-      const { jobId } = await response.json();
-
-      if (!jobId) {
-        throw new Error("No job ID returned");
-      }
-
-      // Poll for status
-      const pollInterval = 1000; // 1 second
-      const maxPolls = 120; // 2 minutes max
-      let polls = 0;
-
-      const poll = async (): Promise<void> => {
-        if (abortControllerRef.current?.signal.aborted) {
-          setAppState("form");
-          return;
-        }
-
-        polls++;
-        if (polls > maxPolls) {
-          throw new Error("Generation timed out. Please try again.");
-        }
-
-        const statusResponse = await fetch(`/api/status/${jobId}`);
-
-        if (!statusResponse.ok) {
-          throw new Error("Failed to check generation status");
-        }
-
-        const status = await statusResponse.json();
-
-        // Update progress UI
-        setProgress(status.progress || 0);
-        if (status.status) {
-          setCurrentStep(status.status);
-        }
-
-        if (status.status === "completed" && status.result) {
-          setProgress(100);
-          setGenerationResult(status.result);
-          setAppState("complete");
-          return;
-        }
-
-        if (status.status === "error") {
-          throw new Error(status.error || "Generation failed");
-        }
-
-        // Continue polling
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
-        return poll();
-      };
-
-      await poll();
+      const result: GenerationResult = await response.json();
+      setGenerationResult(result);
+      setAppState("complete");
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         setAppState("form");
@@ -237,8 +182,6 @@ export default function Home() {
         {appState === "generating" && (
           <div className="py-12">
             <GenerationProgress
-              progress={progress}
-              currentStep={currentStep}
               elapsedTime={elapsedTime}
               onCancel={handleCancel}
             />

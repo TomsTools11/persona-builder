@@ -70,13 +70,11 @@ Last updated: December 18, 2025
 
 ## Architecture
 
-### Generation Flow (Background Job Pattern)
+### Generation Flow (Synchronous)
 1. User submits form → POST /api/generate
-2. Server creates job, returns jobId immediately
-3. Background process runs persona generation
-4. Frontend polls GET /api/status/[id] every second
-5. When complete, status returns full result
-6. User can download PDF via POST /api/download
+2. Server fetches the website via Jina, calls Claude, parses the JSON, and returns the full GenerationResult in the response.
+3. Frontend awaits the response and transitions directly to the complete view.
+4. User can download PDF via POST /api/download.
 
 ### Key Files
 ```
@@ -86,8 +84,7 @@ persona-builder/
 │   ├── layout.tsx
 │   ├── globals.css
 │   └── api/
-│       ├── generate/route.ts # Creates job, runs background generation
-│       ├── status/[id]/route.ts # Polling endpoint for job status
+│       ├── generate/route.ts # Synchronous Claude call; returns GenerationResult
 │       └── download/route.ts # PDF generation
 ├── components/
 │   ├── Header.tsx
@@ -98,8 +95,7 @@ persona-builder/
 ├── lib/
 │   ├── websiteFetcher.ts     # Jina AI Reader
 │   ├── personaPrompt.ts      # Simplified Claude prompt
-│   ├── pdfGenerator.tsx      # react-pdf template with null checks
-│   └── job-store.ts          # In-memory job storage
+│   └── pdfGenerator.tsx      # react-pdf template with null checks
 ├── types/index.ts
 ├── next.config.js            # With CSP headers
 ├── .env.local                # API keys (gitignored)
@@ -142,8 +138,8 @@ npm run lint     # Run linter
 - Auto-deploys on push to `main`.
 - The `/api/generate` route declares `export const maxDuration = 60` to allow long Claude calls (Vercel Hobby ceiling; Pro/Enterprise allow more).
 
-### Architecture caveat
-The current `/api/generate` route uses a fire-and-forget background job + an in-memory `Map` (`lib/job-store.ts`) and `/api/status/[id]` polling. That pattern was designed for a long-lived Node process (previously Railway). On Vercel's serverless functions the job-store Map is not shared across instances and the background Promise is suspended after the response is sent, so the polling endpoint will not see a `completed` job. Before relying on Vercel in production, switch `/api/generate` to await Claude inline and return the result synchronously, or replace the in-memory store with Vercel KV / Upstash Redis.
+### Architecture note
+`/api/generate` runs synchronously inside a single serverless invocation: fetch website → call Claude → return JSON. There is no background job store and no polling endpoint, so the route works on Vercel without any extra infra. If generation ever exceeds 60s, raise `maxDuration` (Vercel Pro/Enterprise) or move generation behind a queue with a shared store.
 
 ---
 

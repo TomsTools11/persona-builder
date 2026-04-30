@@ -132,9 +132,3 @@ export interface SurveyGuide {
   }[];
 }
 
-// API Response Types
-export interface GenerateStreamEvent {
-  type: "progress" | "content" | "complete" | "error";
-  data: string;
-  progress?: number;
-}

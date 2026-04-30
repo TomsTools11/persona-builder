@@ -21,24 +21,18 @@ There is no test runner configured in `package.json`. `@playwright/test` is inst
 - `@react-pdf/renderer` for PDF output
 - Jina AI Reader (https://r.jina.ai) for website-to-markdown scraping
 
-## Architecture: Background Job + Polling
+## Architecture: Synchronous Generation
 
-**This is the most important pattern in the codebase** — generation does NOT use SSE streaming. Long-running Claude calls (often 30–60s) historically would be killed by serverless function timeouts, so the app uses a fire-and-forget background job pattern:
+`/api/generate` is a single synchronous request. The client POSTs the `PersonaFormData` JSON, the route fetches the website via Jina, calls Claude, parses the JSON, and returns the full `GenerationResult` in the response body. There is no job store, no `/api/status/[id]` polling endpoint, and no fire-and-forget background work — the architecture intentionally fits inside a single serverless invocation so it works on Vercel.
 
-1. `POST /api/generate` (`app/api/generate/route.ts`) — parses JSON body, creates a job via `lib/job-store.ts`, kicks off `processPersonaGeneration()` without awaiting it, and immediately returns `{ jobId, status: "pending" }`.
-2. `GET /api/status/[id]` (`app/api/status/[id]/route.ts`) — client polls every ~1s for `{ status, progress, result, error }`. The frontend transitions to the `complete` state when status is `"completed"`.
-3. `POST /api/download` (`app/api/download/route.ts`) — client POSTs the `GenerationResult` JSON; server renders the React-PDF document via `renderToBuffer` and streams back a PDF.
+1. `POST /api/generate` (`app/api/generate/route.ts`) — validates `{ description, websiteUrl }`, fetches website content (with a graceful fallback if the fetch fails), calls Claude Haiku, parses the response, and returns the `GenerationResult` JSON. `export const maxDuration = 60` gives it the full Vercel timeout budget. Generation typically takes 30–60s.
+2. `POST /api/download` (`app/api/download/route.ts`) — client POSTs the `GenerationResult` JSON; server renders the React-PDF document via `renderToBuffer` and streams back a PDF.
 
-`lib/job-store.ts` is an in-memory `Map<string, Job>` attached to `globalThis` (so it survives Next.js dev hot reloads). **Consequences for any future work:**
-- Jobs are lost on server restart and not shared across instances. The store assumes a single long-lived Node process — it does NOT work on serverless platforms (Vercel, Netlify) where the function instance handling the polling request can differ from the one that created the job, and where the fire-and-forget Promise is suspended after the response is sent. To run on Vercel, switch the architecture to either a synchronous response (drop polling, `await` Claude inline) or back the job store with Vercel KV / Upstash Redis.
-- Old jobs are reaped opportunistically on each `createJob` call (>1h old).
-- Status enum: `pending | fetching | analyzing | generating | formatting | completed | error`. The frontend, `GenerationProgress.tsx`, and the route all need to agree on these strings.
-
-The progress values written by `processPersonaGeneration` (10/25/35/45/50/85/90/100) are hard-coded checkpoints, not real progress — adjust them together with any step changes.
+If Claude generation ever exceeds 60s in practice, switch the platform plan (Pro raises `maxDuration`) or move generation behind a queue with a shared store (Vercel KV / Upstash Redis). Don't reintroduce the in-memory `Map` job store — that pattern only works on a long-lived Node process and is the reason the previous Railway-era code couldn't run on Vercel.
 
 ## Frontend State Machine
 
-`app/page.tsx` has four states (`AppState` in `types/index.ts`): `landing` → `form` → `generating` → `complete`. `landing` renders `LandingPage.tsx` (marketing); `form` renders `InputForm.tsx`; `generating` renders `GenerationProgress.tsx` (which owns the polling loop and cancel button); `complete` renders `OutputScreen.tsx`.
+`app/page.tsx` has four states (`AppState` in `types/index.ts`): `landing` → `form` → `generating` → `complete`. `landing` renders `LandingPage.tsx` (marketing); `form` renders `InputForm.tsx`; `generating` renders `GenerationProgress.tsx` (an indeterminate spinner with elapsed-time counter and cancel button); `complete` renders `OutputScreen.tsx`. Submission `await`s the `/api/generate` response in `handleSubmit` and transitions directly to `complete`.
 
 Form contract (`PersonaFormData` in `types/index.ts`):
 - **Required:** `description`, `websiteUrl` — both are validated in `/api/generate`.
@@ -55,7 +49,6 @@ The Claude response is parsed by stripping ```json fences and slicing between th
 - **Target:** Vercel — connect the GitHub repo and Vercel will auto-detect the Next.js app. No `vercel.json` is required; the API route sets `export const maxDuration = 60` directly so generation runs up to 60s (Vercel Hobby ceiling; Pro/Enterprise allow more).
 - Set `ANTHROPIC_API_KEY` (required) and `JINA_API_KEY` (optional) in the Vercel project settings.
 - `next.config.js` sets a CSP that allow-lists `api.anthropic.com` and `r.jina.ai` for `connect-src`. Any new external API call needs a CSP update there.
-- **Architecture caveat:** the in-memory job store described above is incompatible with serverless deployment. Before shipping to Vercel, either switch `/api/generate` to await Claude synchronously and return the result inline (and drop the polling), or replace `lib/job-store.ts` with a shared store such as Vercel KV / Upstash Redis.
 
 ## Environment
 
