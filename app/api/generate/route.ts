@@ -4,7 +4,6 @@ import {
   fetchWebsiteContent,
   summarizeWebsiteContent,
 } from "@/lib/websiteFetcher";
-import { processFile, formatFilesForPrompt } from "@/lib/fileProcessors";
 import { buildPersonaPrompt } from "@/lib/personaPrompt";
 import { createJob, updateJob, generateJobId } from "@/lib/job-store";
 import type { PersonaFormData } from "@/types";
@@ -24,21 +23,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Parse form data
-    const formData = await request.formData();
-    const formDataJson = formData.get("formData");
-
-    if (!formDataJson || typeof formDataJson !== "string") {
-      return NextResponse.json(
-        { error: "Missing form data" },
-        { status: 400 }
-      );
-    }
-
-    const personaFormData: PersonaFormData = JSON.parse(formDataJson);
+    const personaFormData: PersonaFormData = await request.json();
 
     // Validate required fields
-    if (!personaFormData.productName || !personaFormData.targetAudience) {
+    if (
+      !personaFormData?.description?.trim() ||
+      !personaFormData?.websiteUrl?.trim()
+    ) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -49,25 +40,14 @@ export async function POST(request: NextRequest) {
     const jobId = generateJobId();
     createJob(jobId);
 
-    // Process files synchronously before starting background work
-    const files = formData.getAll("files") as File[];
-    const fileBuffers: { buffer: Buffer; name: string; type: string }[] = [];
-
-    for (const file of files) {
-      const buffer = Buffer.from(await file.arrayBuffer());
-      fileBuffers.push({ buffer, name: file.name, type: file.type });
-    }
-
     // Start background processing (fire-and-forget)
-    processPersonaGeneration(jobId, personaFormData, fileBuffers, apiKey).catch(
-      (error) => {
-        console.error("Background processing error:", error);
-        updateJob(jobId, {
-          status: "error",
-          error: error instanceof Error ? error.message : "Generation failed",
-        });
-      }
-    );
+    processPersonaGeneration(jobId, personaFormData, apiKey).catch((error) => {
+      console.error("Background processing error:", error);
+      updateJob(jobId, {
+        status: "error",
+        error: error instanceof Error ? error.message : "Generation failed",
+      });
+    });
 
     // Return job ID immediately
     return NextResponse.json({ jobId, status: "pending" });
@@ -83,7 +63,6 @@ export async function POST(request: NextRequest) {
 async function processPersonaGeneration(
   jobId: string,
   personaFormData: PersonaFormData,
-  fileBuffers: { buffer: Buffer; name: string; type: string }[],
   apiKey: string
 ) {
   try {
@@ -103,36 +82,16 @@ async function processPersonaGeneration(
       }
     }
 
-    updateJob(jobId, { status: "fetching", progress: 25 });
-
-    // Step 2: Process files
-    updateJob(jobId, { status: "analyzing", progress: 35 });
-
-    let fileContent = "";
-    if (fileBuffers.length > 0) {
-      const processedFiles = [];
-      for (const { buffer, name, type } of fileBuffers) {
-        try {
-          const processed = await processFile(buffer, name, type);
-          processedFiles.push(processed);
-        } catch (error) {
-          console.error(`Error processing file ${name}:`, error);
-        }
-      }
-      fileContent = formatFilesForPrompt(processedFiles);
-    }
-
-    // Step 3: Build prompt
+    // Step 2: Build prompt
     updateJob(jobId, { status: "analyzing", progress: 45 });
 
     const prompt = buildPersonaPrompt({
-      formData: personaFormData,
+      description: personaFormData.description,
+      websiteUrl: personaFormData.websiteUrl,
       websiteContent,
-      competitorContent: "", // Skip competitors for speed
-      fileContent,
     });
 
-    // Step 4: Call Claude API (non-streaming for speed)
+    // Step 3: Call Claude API (non-streaming for speed)
     updateJob(jobId, { status: "generating", progress: 50 });
 
     const anthropic = new Anthropic({ apiKey });
@@ -145,7 +104,7 @@ async function processPersonaGeneration(
 
     updateJob(jobId, { status: "generating", progress: 85 });
 
-    // Step 5: Parse response
+    // Step 4: Parse response
     updateJob(jobId, { status: "formatting", progress: 90 });
 
     const textContent = response.content.find((c) => c.type === "text");
@@ -181,9 +140,11 @@ async function processPersonaGeneration(
       throw new Error("Failed to parse personas - invalid JSON");
     }
 
-    // Add metadata
+    // Add metadata; fall back to URL host if Claude didn't include a name
     result.generatedAt = new Date().toISOString();
-    result.productName = personaFormData.productName;
+    if (!result.productName || typeof result.productName !== "string") {
+      result.productName = deriveProductNameFromUrl(personaFormData.websiteUrl);
+    }
 
     // Complete!
     updateJob(jobId, {
@@ -199,5 +160,14 @@ async function processPersonaGeneration(
       status: "error",
       error: error instanceof Error ? error.message : "Generation failed",
     });
+  }
+}
+
+function deriveProductNameFromUrl(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    return host.split(".")[0] || "User Personas";
+  } catch {
+    return "User Personas";
   }
 }
