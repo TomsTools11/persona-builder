@@ -47,7 +47,7 @@ export default function Home() {
     };
   }, [appState]);
 
-  const handleSubmit = async (formData: PersonaFormData, files: File[]) => {
+  const handleSubmit = async (formData: PersonaFormData) => {
     setAppState("generating");
     setProgress(0);
     setCurrentStep("fetching");
@@ -56,19 +56,11 @@ export default function Home() {
     abortControllerRef.current = new AbortController();
 
     try {
-      // Create FormData for the API request
-      const apiFormData = new FormData();
-      apiFormData.append("formData", JSON.stringify(formData));
-
-      // Append files
-      files.forEach((file) => {
-        apiFormData.append("files", file);
-      });
-
       // Start generation - returns immediately with job ID
       const response = await fetch("/api/generate", {
         method: "POST",
-        body: apiFormData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
         signal: abortControllerRef.current.signal,
       });
 

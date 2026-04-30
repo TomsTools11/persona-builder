@@ -1,27 +1,7 @@
 // Form Data Types
 export interface PersonaFormData {
-  // Required inputs
-  productName: string;
+  description: string;
   websiteUrl: string;
-  targetAudience: string;
-
-  // Optional inputs
-  competitorUrls: string[];
-  jobToBeDone: string;
-
-  // Toggle options
-  personaCount: number;
-  includeSections: {
-    interviewGuide: boolean;
-    survey: boolean;
-    journeyMap: boolean;
-  };
-  includeDemographics: {
-    age: boolean;
-    location: boolean;
-    gender: boolean;
-    incomeRange: boolean;
-  };
 }
 
 // Application State
@@ -150,14 +130,6 @@ export interface SurveyGuide {
       options?: string[];
     }[];
   }[];
-}
-
-// File Upload Types
-export interface UploadedFile {
-  name: string;
-  type: string;
-  size: number;
-  content: string;
 }
 
 // API Response Types
