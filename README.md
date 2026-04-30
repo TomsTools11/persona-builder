@@ -1,6 +1,6 @@
 # Persona Builder - Progress Tracker
 
-## Current Status: DEPLOYED on Railway
+## Current Status: DEPLOYED on Vercel
 
 Last updated: December 18, 2025
 
@@ -97,13 +97,10 @@ persona-builder/
 │   └── LandingPage.tsx
 ├── lib/
 │   ├── websiteFetcher.ts     # Jina AI Reader
-│   ├── fileProcessors.ts     # PDF/DOCX parsing
 │   ├── personaPrompt.ts      # Simplified Claude prompt
 │   ├── pdfGenerator.tsx      # react-pdf template with null checks
 │   └── job-store.ts          # In-memory job storage
 ├── types/index.ts
-├── Dockerfile                # For Railway deployment
-├── railway.json              # Railway configuration
 ├── next.config.js            # With CSP headers
 ├── .env.local                # API keys (gitignored)
 └── package.json
@@ -123,7 +120,7 @@ ANTHROPIC_API_KEY=sk-ant-xxx
 JINA_API_KEY=jina_xxx  # For higher rate limits on website fetching
 ```
 
-For Railway: Add in Project Settings > Variables
+For Vercel: Add in Project Settings > Environment Variables.
 
 ---
 
@@ -139,15 +136,14 @@ npm run lint     # Run linter
 
 ## Deployment
 
-### Railway (Current)
+### Vercel (Current)
 - Repository: https://github.com/TomsTools11/persona-builder
-- Deployment: Docker-based via Dockerfile
-- Auto-deploys on push to main branch
+- Connect the repo in the Vercel dashboard; Next.js is auto-detected — no `vercel.json` needed.
+- Auto-deploys on push to `main`.
+- The `/api/generate` route declares `export const maxDuration = 60` to allow long Claude calls (Vercel Hobby ceiling; Pro/Enterprise allow more).
 
-### Why Railway over Netlify?
-- Netlify serverless functions have 10-26 second timeout limits
-- Railway containers have no timeout limits for background processes
-- Better suited for AI generation tasks that take 30-60+ seconds
+### Architecture caveat
+The current `/api/generate` route uses a fire-and-forget background job + an in-memory `Map` (`lib/job-store.ts`) and `/api/status/[id]` polling. That pattern was designed for a long-lived Node process (previously Railway). On Vercel's serverless functions the job-store Map is not shared across instances and the background Promise is suspended after the response is sent, so the polling endpoint will not see a `completed` job. Before relying on Vercel in production, switch `/api/generate` to await Claude inline and return the result synchronously, or replace the in-memory store with Vercel KV / Upstash Redis.
 
 ---
 

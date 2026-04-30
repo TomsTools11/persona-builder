@@ -20,18 +20,17 @@ There is no test runner configured in `package.json`. `@playwright/test` is inst
 - Anthropic SDK (`@anthropic-ai/sdk`) — model is `claude-haiku-4-5-20251001` (chosen for generation speed)
 - `@react-pdf/renderer` for PDF output
 - Jina AI Reader (https://r.jina.ai) for website-to-markdown scraping
-- `pdf-parse` (PDF) and `mammoth` (DOCX) for uploaded research file processing
 
 ## Architecture: Background Job + Polling
 
-**This is the most important pattern in the codebase** — generation does NOT use SSE streaming. Long-running Claude calls (often 30–60s) would be killed by serverless function timeouts (Netlify ~26s, Vercel similar), so the app deploys to Railway (Docker container, no timeout) and uses a fire-and-forget background job pattern:
+**This is the most important pattern in the codebase** — generation does NOT use SSE streaming. Long-running Claude calls (often 30–60s) historically would be killed by serverless function timeouts, so the app uses a fire-and-forget background job pattern:
 
-1. `POST /api/generate` (`app/api/generate/route.ts`) — parses `multipart/form-data` (form JSON + uploaded files), reads file buffers synchronously, creates a job via `lib/job-store.ts`, kicks off `processPersonaGeneration()` without awaiting it, and immediately returns `{ jobId, status: "pending" }`.
+1. `POST /api/generate` (`app/api/generate/route.ts`) — parses JSON body, creates a job via `lib/job-store.ts`, kicks off `processPersonaGeneration()` without awaiting it, and immediately returns `{ jobId, status: "pending" }`.
 2. `GET /api/status/[id]` (`app/api/status/[id]/route.ts`) — client polls every ~1s for `{ status, progress, result, error }`. The frontend transitions to the `complete` state when status is `"completed"`.
 3. `POST /api/download` (`app/api/download/route.ts`) — client POSTs the `GenerationResult` JSON; server renders the React-PDF document via `renderToBuffer` and streams back a PDF.
 
 `lib/job-store.ts` is an in-memory `Map<string, Job>` attached to `globalThis` (so it survives Next.js dev hot reloads). **Consequences for any future work:**
-- Jobs are lost on server restart and not shared across instances. If you scale Railway beyond one container, swap to Redis/DB before doing anything else.
+- Jobs are lost on server restart and not shared across instances. The store assumes a single long-lived Node process — it does NOT work on serverless platforms (Vercel, Netlify) where the function instance handling the polling request can differ from the one that created the job, and where the fire-and-forget Promise is suspended after the response is sent. To run on Vercel, switch the architecture to either a synchronous response (drop polling, `await` Claude inline) or back the job store with Vercel KV / Upstash Redis.
 - Old jobs are reaped opportunistically on each `createJob` call (>1h old).
 - Status enum: `pending | fetching | analyzing | generating | formatting | completed | error`. The frontend, `GenerationProgress.tsx`, and the route all need to agree on these strings.
 
@@ -42,9 +41,8 @@ The progress values written by `processPersonaGeneration` (10/25/35/45/50/85/90/
 `app/page.tsx` has four states (`AppState` in `types/index.ts`): `landing` → `form` → `generating` → `complete`. `landing` renders `LandingPage.tsx` (marketing); `form` renders `InputForm.tsx`; `generating` renders `GenerationProgress.tsx` (which owns the polling loop and cancel button); `complete` renders `OutputScreen.tsx`.
 
 Form contract (`PersonaFormData` in `types/index.ts`):
-- **Required:** `productName`, `targetAudience` (note: `websiteUrl` is now **optional** despite the type being `string` — the route treats empty string as "skip fetch")
-- **Optional:** `competitorUrls[]`, `jobToBeDone`, file uploads
-- The route currently ignores `competitorUrls` (`competitorContent: ""` is hardcoded) for speed — restore by mapping over them with `fetchWebsiteContent` if you need richer prompts.
+- **Required:** `description`, `websiteUrl` — both are validated in `/api/generate`.
+- The prompt template (`lib/personaPrompt.ts`) hardcodes 3 personas, the interview guide section, and age + location demographics. Claude is asked to infer a `productName` from the description/website and return it on the result; the route falls back to the URL hostname if it's missing.
 
 ## Persona Output Shape
 
@@ -54,10 +52,10 @@ The Claude response is parsed by stripping ```json fences and slicing between th
 
 ## Deployment
 
-- **Active:** Railway via `Dockerfile` + `railway.json` (Docker builder, `node:20-alpine`, `npm start` on port 3000). Auto-deploys from `main`.
-- `netlify.toml` is still present but **not the active deployment** — Netlify's serverless timeouts are why we moved off it. Don't reintroduce streaming/long-running patterns assuming Netlify will work.
+- **Target:** Vercel — connect the GitHub repo and Vercel will auto-detect the Next.js app. No `vercel.json` is required; the API route sets `export const maxDuration = 60` directly so generation runs up to 60s (Vercel Hobby ceiling; Pro/Enterprise allow more).
+- Set `ANTHROPIC_API_KEY` (required) and `JINA_API_KEY` (optional) in the Vercel project settings.
 - `next.config.js` sets a CSP that allow-lists `api.anthropic.com` and `r.jina.ai` for `connect-src`. Any new external API call needs a CSP update there.
-- `pdf-parse` is in `serverExternalPackages` because it bundles weirdly otherwise.
+- **Architecture caveat:** the in-memory job store described above is incompatible with serverless deployment. Before shipping to Vercel, either switch `/api/generate` to await Claude synchronously and return the result inline (and drop the polling), or replace `lib/job-store.ts` with a shared store such as Vercel KV / Upstash Redis.
 
 ## Environment
 
