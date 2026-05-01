@@ -1,53 +1,47 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import Header from "@/components/Header";
-import InputForm from "@/components/InputForm";
+import { useEffect, useRef, useState } from "react";
 import GenerationProgress from "@/components/GenerationProgress";
 import OutputScreen from "@/components/OutputScreen";
 import LandingPage from "@/components/LandingPage";
-import type { AppState, PersonaFormData, GenerationResult } from "@/types";
+import type { AppState, GenerationResult } from "@/types";
+
+interface FormParams {
+  url: string;
+  audience: string;
+}
 
 export default function Home() {
   const [appState, setAppState] = useState<AppState>("landing");
   const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null);
+  const [params, setParams] = useState<FormParams>({ url: "", audience: "" });
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleGetStarted = () => {
-    setAppState("form");
-  };
-
-  const handleBackToLanding = () => {
-    setAppState("landing");
-  };
-
-  // Timer for elapsed time
   useEffect(() => {
     if (appState === "generating") {
+      setElapsedTime(0);
       timerRef.current = setInterval(() => {
         setElapsedTime((prev) => prev + 1);
       }, 1000);
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-      setElapsedTime(0);
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current);
     }
-
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [appState]);
 
-  const handleSubmit = async (formData: PersonaFormData) => {
-    setAppState("generating");
+  const submit = async ({ url, audience }: FormParams) => {
+    setParams({ url, audience });
+    setIsFinishing(false);
     setError(null);
+    setAppState("generating");
 
     abortControllerRef.current = new AbortController();
 
@@ -55,7 +49,7 @@ export default function Home() {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ description: audience, websiteUrl: url }),
         signal: abortControllerRef.current.signal,
       });
 
@@ -65,54 +59,49 @@ export default function Home() {
       }
 
       const result: GenerationResult = await response.json();
-      setGenerationResult(result);
-      setAppState("complete");
+      setIsFinishing(true);
+      // Brief pause so the progress bar visibly hits 100% before the page swap.
+      setTimeout(() => {
+        setGenerationResult(result);
+        setAppState("complete");
+      }, 600);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
-        setAppState("form");
+        setAppState("landing");
       } else {
         const errorMessage = err instanceof Error ? err.message : "Generation failed";
-        const finalMessage = errorMessage.includes("fetch") || errorMessage.includes("network")
-          ? "Network error - please check your connection and try again."
-          : errorMessage;
+        const finalMessage =
+          errorMessage.includes("fetch") || errorMessage.includes("network")
+            ? "Network error — please check your connection and try again."
+            : errorMessage;
         setError(finalMessage);
-        setAppState("form");
+        setAppState("landing");
       }
     }
   };
 
   const handleCancel = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+    abortControllerRef.current?.abort();
     setAppState("landing");
   };
 
   const handleGenerateNew = () => {
     setGenerationResult(null);
+    setError(null);
     setAppState("landing");
   };
 
   const handleDownloadPDF = async () => {
-    if (!generationResult) return;
-
+    if (!generationResult || isDownloading) return;
+    setIsDownloading(true);
     try {
       const response = await fetch("/api/download", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(generationResult),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate PDF");
-      }
-
-      // Get the blob from the response
+      if (!response.ok) throw new Error("Failed to generate PDF");
       const blob = await response.blob();
-
-      // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -123,80 +112,44 @@ export default function Home() {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "PDF download failed");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
-  // Determine back button behavior based on state
-  const getBackHandler = () => {
-    switch (appState) {
-      case "form":
-        return handleBackToLanding;
-      case "generating":
-        return handleCancel;
-      case "complete":
-        return handleGenerateNew;
-      default:
-        return undefined;
-    }
-  };
+  if (appState === "generating") {
+    return (
+      <GenerationProgress
+        url={params.url}
+        audience={params.audience}
+        elapsedTime={elapsedTime}
+        isFinishing={isFinishing}
+        onCancel={handleCancel}
+      />
+    );
+  }
 
-  // Landing page has its own layout
-  if (appState === "landing") {
-    return <LandingPage onGetStarted={handleGetStarted} />;
+  if (appState === "complete" && generationResult) {
+    return (
+      <OutputScreen
+        result={generationResult}
+        sourceUrl={params.url}
+        audience={params.audience}
+        isDownloading={isDownloading}
+        onGenerateNew={handleGenerateNew}
+        onDownloadPDF={handleDownloadPDF}
+      />
+    );
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark">
-      <Header
-        showBackButton={true}
-        onBack={getBackHandler()}
-      />
-
-      <main className="mx-auto max-w-container px-6 py-8">
-        {/* Error Display */}
-        {error && (
-          <div className="mb-6 rounded-lg border border-error bg-error/10 px-4 py-3 text-error">
-            {error}
-          </div>
-        )}
-
-        {/* Form State */}
-        {appState === "form" && (
-          <div className="mx-auto max-w-2xl">
-            <div className="mb-8 text-center">
-              <h1 className="text-display text-white">
-                Build User Personas in Minutes
-              </h1>
-              <p className="mt-4 text-lg text-text-secondary">
-                Transform website URLs and research materials into actionable user
-                personas with AI-powered analysis.
-              </p>
-            </div>
-            <div className="rounded-xl border border-surface-light bg-primary p-6 md:p-8">
-              <InputForm onSubmit={handleSubmit} isGenerating={false} />
-            </div>
-          </div>
-        )}
-
-        {/* Generating State */}
-        {appState === "generating" && (
-          <div className="py-12">
-            <GenerationProgress
-              elapsedTime={elapsedTime}
-              onCancel={handleCancel}
-            />
-          </div>
-        )}
-
-        {/* Complete State */}
-        {appState === "complete" && generationResult && (
-          <OutputScreen
-            result={generationResult}
-            onGenerateNew={handleGenerateNew}
-            onDownloadPDF={handleDownloadPDF}
-          />
-        )}
-      </main>
-    </div>
+    <>
+      {error && (
+        <div style={{ padding: "16px 24px 0" }}>
+          <div className="error-toast">{error}</div>
+        </div>
+      )}
+      <LandingPage onSubmit={submit} />
+    </>
   );
 }
