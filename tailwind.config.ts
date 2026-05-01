@@ -8,62 +8,41 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Primary - Near Black backgrounds
-        primary: {
-          DEFAULT: "#1F1F1F",
-          dark: "#191919",
-        },
-        // Primary Accent - Teal
-        accent: {
-          DEFAULT: "#2383E2",
-          hover: "#1a6fc4",
-        },
-        // Secondary Accents
-        secondary: {
-          teal: "#014379",
-          cyan: "#448361",
-        },
-        // System Colors
-        success: "#27C93F",
-        warning: "#FFBD2E",
-        error: "#FF5F56",
-        // Text Colors
-        text: {
-          primary: "#2F2F2F",
-          secondary: "#A0A0A0",
-        },
-        // Surface colors for cards/containers
         surface: {
-          DEFAULT: "#2A2A2A",
-          light: "#3A3A3A",
+          0: "#0b0d10",
+          1: "#11141a",
+          2: "#161a21",
+          3: "#1c2129",
+          border: "#232830",
+          "border-strong": "#2c333d",
         },
+        brand: {
+          DEFAULT: "#2e9df1",
+          hover: "#4eb1ff",
+          soft: "rgba(46,157,241,0.14)",
+          ring: "rgba(46,157,241,0.32)",
+          deep: "#1c5e92",
+        },
+        fg: {
+          primary: "#f4f5f7",
+          secondary: "#9aa3af",
+          tertiary: "#5f6772",
+        },
+        success: {
+          DEFAULT: "#34d399",
+          soft: "rgba(52,211,153,0.12)",
+          border: "rgba(52,211,153,0.28)",
+        },
+        danger: "#ef5e5e",
+        warning: "#f59e0b",
       },
       fontFamily: {
-        sans: ["system-ui", "sans-serif"],
-        mono: ["ui-monospace", "Consolas", "monospace"],
-      },
-      fontSize: {
-        display: ["48px", { lineHeight: "1.1", fontWeight: "700" }],
-        h1: ["28px", { lineHeight: "1.2", fontWeight: "600" }],
-        h2: ["18px", { lineHeight: "1.3", fontWeight: "600" }],
-        h3: ["16px", { lineHeight: "1.4", fontWeight: "500" }],
-        body: ["14px", { lineHeight: "1.5" }],
-        "body-sm": ["12px", { lineHeight: "1.5" }],
-      },
-      spacing: {
-        "space-1": "4px",
-        "space-2": "8px",
-        "space-3": "12px",
-        "space-4": "16px",
-        "space-5": "20px",
-        "space-6": "24px",
-        "space-8": "32px",
-        "space-10": "40px",
-        "space-12": "48px",
-        "space-16": "64px",
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "Consolas", "monospace"],
       },
       maxWidth: {
-        container: "1280px",
+        container: "1100px",
+        narrow: "720px",
       },
       borderRadius: {
         DEFAULT: "8px",

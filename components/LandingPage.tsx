@@ -1,483 +1,434 @@
 "use client";
 
-interface LandingPageProps {
-  onGetStarted: () => void;
+import { useState } from "react";
+import AppHeader from "./AppHeader";
+import AppFooter from "./AppFooter";
+import { I } from "./Icons";
+
+interface Props {
+  onSubmit: (data: { url: string; audience: string }) => void;
 }
 
-export default function LandingPage({ onGetStarted }: LandingPageProps) {
+const TRY_URLS = ["stripe.com", "linear.app", "notion.so", "vercel.com"];
+
+const FEATURES = [
+  {
+    icon: <I.Users size={14} />,
+    title: "Persona profiles",
+    meta: "archetype · tagline",
+    desc: "Detected user segments with archetype names, taglines, demographics and role context — no clip art, no stock photos.",
+  },
+  {
+    icon: <I.Target size={14} />,
+    title: "Goals & JTBD",
+    meta: "primary · secondary",
+    desc: "Primary and supporting jobs-to-be-done with success criteria. What 'good' looks like in the user's own words.",
+  },
+  {
+    icon: <I.Wand size={14} />,
+    title: "Pain points & barriers",
+    meta: "risk · severity",
+    desc: "Frustrations, blockers, and adoption barriers — each tagged with severity so the team can triage.",
+  },
+  {
+    icon: <I.Quote size={14} />,
+    title: "Voice-of-user quotes",
+    meta: "goal · frustration",
+    desc: "Representative quotes synthesized from your site copy and any uploaded research, attributed to each persona.",
+  },
+  {
+    icon: <I.Document size={14} />,
+    title: "Interview guide",
+    meta: "12–18 questions",
+    desc: "A ready-to-use research script with warm-up, core, and closing questions. Drop into a Doc and run it.",
+  },
+  {
+    icon: <I.Layers size={14} />,
+    title: "Print-ready PDF",
+    meta: "≈ 19 pages",
+    desc: "Cover, contents, persona spreads, journey snapshot, design implications. Stable share link, no install.",
+  },
+];
+
+const HOW_STEPS = [
+  {
+    step: "01",
+    title: "Paste a URL",
+    meta: "GET /analyze → 200",
+    desc: "Drop in any public site. We crawl the homepage and one level deep, render with a real engine, and read your copy in context.",
+  },
+  {
+    step: "02",
+    title: "We synthesize",
+    meta: "segments: 4 · roles: 7",
+    desc: "Audience cues get clustered into segments. JTBDs are extracted. Pain points are scored. Each persona gets a coherent profile.",
+  },
+  {
+    step: "03",
+    title: "Download a PDF",
+    meta: "/r/9kR2vH.pdf",
+    desc: "A print-ready PDF you can hand off, share, or print. Re-runs produce a fresh file you can download again.",
+  },
+];
+
+const PDF_BULLETS = [
+  "Cover, table of contents, and section dividers",
+  "One detailed spread per persona (≈4 pages)",
+  "Goals, JTBDs, pain points, and quotes",
+  "Behaviors, channels, and tools profile",
+  "Journey snapshot per persona",
+  "Interview guide with 12–18 questions",
+  "Design implications and next research",
+  "Assumptions & open questions called out explicitly",
+];
+
+const FAQS: [string, string][] = [
+  [
+    "Is it really free?",
+    "Yes. There is no payment, no subscription. S3 Labs apps are one-time tools or quietly free; this one is free.",
+  ],
+  [
+    "What sites can I analyze?",
+    "Any public website. Heavier sites (Notion, Linear) take ~30–60 seconds because we render the full page in a real browser before reading the copy.",
+  ],
+  [
+    "How long does generation take?",
+    "Most runs finish in 30 to 60 seconds. We tell you what step you're on while you wait.",
+  ],
+  [
+    "Can I edit the PDF afterwards?",
+    "The download is a flat PDF. Re-running the analysis produces a fresh file.",
+  ],
+  [
+    "Do you store my data?",
+    "Your generation lives only in this tab — close it and it's gone. Nothing is persisted server-side.",
+  ],
+  [
+    "What else is like this?",
+    "DropDoc, our companion app, does the same trick for any HTML report you have lying around.",
+  ],
+];
+
+export default function LandingPage({ onSubmit }: Props) {
+  const [url, setUrl] = useState("");
+  const [audience, setAudience] = useState("");
+
+  const submit = () => {
+    const u = url.trim();
+    const a = audience.trim();
+    if (!u || !a) return;
+    onSubmit({ url: u, audience: a });
+  };
+
+  const canSubmit = url.trim().length > 0 && audience.trim().length > 0;
 
   return (
-    <div className="min-h-screen bg-primary-dark">
-      {/* Hero Section */}
-      <section className="px-6 pt-16 pb-20">
-        <div className="mx-auto max-w-4xl text-center">
-          {/* Badge */}
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-surface-light bg-surface px-4 py-2">
-            <svg
-              className="h-4 w-4 text-accent"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
-            <span className="text-body-sm text-text-secondary">
-              AI-Powered Persona Generation
-            </span>
-          </div>
+    <>
+      <AppHeader mode="landing" />
 
-          {/* Headline */}
-          <h1 className="text-display text-white">
-            Generate Professional
-            <br />
-            <span className="text-accent">User Personas</span>
+      <section style={{ position: "relative", padding: "64px 0 48px", textAlign: "center" }}>
+        <div className="grain" />
+        <div className="ss-container" style={{ position: "relative" }}>
+          <span className="eyebrow">
+            <span className="dot" />a tiny utility from s3 labs
+          </span>
+
+          <h1 className="h-display" style={{ marginTop: 18 }}>
+            Generate professional personas. <span className="brand">In just minutes.</span>
           </h1>
 
-          {/* Subheadline */}
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-text-secondary">
-            Enter any website URL and receive comprehensive, beautifully
-            formatted user personas documenting behaviors, goals, pain points,
-            and more.
+          <p className="lead" style={{ marginTop: 18 }}>
+            Enter a website URL and a target audience. Get a comprehensive, beautifully formatted PDF
+            documenting goals, behaviors, pain points, and jobs-to-be-done — for every persona in your product.
           </p>
 
-          {/* CTA Button */}
-          <button
-            onClick={() => onGetStarted()}
-            className="mt-10 inline-flex items-center gap-2 rounded-lg bg-accent px-8 py-4 font-medium text-white transition-colors hover:bg-accent-hover"
-          >
-            Generate Personas
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          <div className="url-row">
+            <span className="scheme">https://</span>
+            <input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="yoursite.com"
+              onKeyDown={(e) => e.key === "Enter" && submit()}
+            />
+            <button
+              className="btn btn-primary"
+              onClick={submit}
+              disabled={!canSubmit}
+              style={{ gap: 8 }}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M14 5l7 7m0 0l-7 7m7-7H3"
-              />
-            </svg>
-          </button>
-        </div>
-      </section>
+              Generate <I.Arrow size={14} />
+            </button>
+          </div>
 
-      {/* Preview Section */}
-      <section className="px-6 pb-20">
-        <div className="mx-auto max-w-5xl">
-          <div className="rounded-xl border border-surface-light bg-surface p-6">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {/* Preview Card 1 */}
-              <PreviewCard
-                title="YourSite.com"
-                subtitle="Brand & Design Style Guide"
-                content={
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-accent/20" />
-                      <div>
-                        <div className="font-medium text-white">Tech-Savvy Taylor</div>
-                        <div className="text-body-sm text-text-secondary">Early Adopter</div>
-                      </div>
-                    </div>
-                    <div className="space-y-2 text-body-sm">
-                      <div className="flex justify-between">
-                        <span className="text-text-secondary">Age Range</span>
-                        <span className="text-white">25-34</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-text-secondary">Tech Comfort</span>
-                        <span className="text-white">Expert</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-text-secondary">Role</span>
-                        <span className="text-white">Product Manager</span>
-                      </div>
-                    </div>
-                  </div>
-                }
-              />
+          <div className="audience-row">
+            <span className="label">Audience</span>
+            <input
+              value={audience}
+              onChange={(e) => setAudience(e.target.value)}
+              placeholder="e.g. solo founders shipping side projects"
+              onKeyDown={(e) => e.key === "Enter" && submit()}
+            />
+          </div>
 
-              {/* Preview Card 2 */}
-              <PreviewCard
-                title="2.3 Goals & Motivations"
-                content={
-                  <div className="space-y-3">
-                    <div>
-                      <div className="mb-1 text-body-sm font-medium text-white">Primary Goals</div>
-                      <ul className="space-y-1 text-body-sm text-text-secondary">
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent">•</span>
-                          Streamline team workflows
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent">•</span>
-                          Reduce manual data entry
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-accent">•</span>
-                          Improve cross-team visibility
-                        </li>
-                      </ul>
-                    </div>
-                    <div>
-                      <div className="mb-1 text-body-sm font-medium text-white">Success Definition</div>
-                      <p className="text-body-sm text-text-secondary">
-                        Measurable productivity gains within 30 days
-                      </p>
-                    </div>
-                  </div>
-                }
-              />
+          <div className="try-row">
+            <span className="label">try:</span>
+            {TRY_URLS.map((u) => (
+              <button key={u} className="try-chip" onClick={() => setUrl(u)}>
+                {u}
+              </button>
+            ))}
+          </div>
 
-              {/* Preview Card 3 */}
-              <PreviewCard
-                title="2.4 Pain Points"
-                content={
-                  <div className="space-y-3">
-                    <div>
-                      <div className="mb-1 text-body-sm font-medium text-white">Challenges</div>
-                      <ul className="space-y-1 text-body-sm text-text-secondary">
-                        <li className="flex items-start gap-2">
-                          <span className="text-error">•</span>
-                          Too many disconnected tools
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-error">•</span>
-                          Difficulty tracking progress
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="text-error">•</span>
-                          Manual reporting is tedious
-                        </li>
-                      </ul>
-                    </div>
-                    <div>
-                      <div className="mb-1 text-body-sm font-medium text-white">Concerns</div>
-                      <p className="text-body-sm text-text-secondary">
-                        Learning curve for new tools
-                      </p>
-                    </div>
-                  </div>
-                }
-              />
+          <div className="stat-row">
+            <div className="stat">
+              <div className="stat-value">≈ 38s</div>
+              <div className="stat-label">average run</div>
             </div>
-
-            {/* Page Indicator */}
-            <div className="mt-6 flex items-center justify-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-accent" />
-              <div className="h-2 w-2 rounded-full bg-surface-light" />
-              <div className="h-2 w-2 rounded-full bg-surface-light" />
-              <span className="ml-2 text-body-sm text-text-secondary">15 pages total</span>
+            <div className="stat">
+              <div className="stat-value">3</div>
+              <div className="stat-label">personas</div>
+            </div>
+            <div className="stat">
+              <div className="stat-value">0</div>
+              <div className="stat-label">accounts to create</div>
+            </div>
+            <div className="stat">
+              <div className="stat-value">∞</div>
+              <div className="stat-label">re-runs</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* How It Works Section */}
-      <section className="border-t border-surface-light px-6 py-20">
-        <div className="mx-auto max-w-4xl text-center">
-          <h2 className="text-h1 text-white">How It Works</h2>
-          <p className="mt-3 text-text-secondary">
-            Three simple steps to create comprehensive user personas for any website
-          </p>
+      <section className="section" id="features">
+        <div className="ss-container">
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <span className="eyebrow">
+              <span className="dot" />features
+            </span>
+            <h2 className="h-section">
+              Everything a research deck needs.{" "}
+              <span className="muted">Nothing it doesn&apos;t.</span>
+            </h2>
+            <p className="lead" style={{ margin: "6px 0 0", textAlign: "left" }}>
+              Six things, done well. Built for the product team&apos;s first-week kickoff, not the demo
+              reel.
+            </p>
+          </div>
 
-          <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3">
-            <StepCard
-              number="01"
-              title="Enter URL"
-              description="Paste any website URL you want to analyze for persona generation"
-            />
-            <StepCard
-              number="02"
-              title="AI Analysis"
-              description="Our engine extracts content and generates detailed personas automatically"
-              hasConnector
-            />
-            <StepCard
-              number="03"
-              title="Download PDF"
-              description="Get a professional persona document ready to share with your team"
-            />
+          <div className="feature-grid">
+            {FEATURES.map((f) => (
+              <FeatureCard key={f.title} icon={f.icon} title={f.title} meta={f.meta} desc={f.desc} />
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="border-t border-surface-light px-6 py-20">
-        <div className="mx-auto max-w-5xl text-center">
-          <h2 className="text-h1 text-white">Everything You Need</h2>
-          <p className="mt-3 text-text-secondary">
-            Our AI analyzes every aspect of your target audience and documents it professionally
-          </p>
+      <section className="section section-band" id="how">
+        <div className="ss-container">
+          <span className="eyebrow">
+            <span className="dot" />how it works
+          </span>
+          <h2 className="h-section" style={{ marginTop: 6 }}>
+            Three steps. <span className="muted">One minute.</span>
+          </h2>
 
-          <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <FeatureCard
-              icon={
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              }
-              title="Behavior Patterns"
-              description="Understand user habits, routines, and decision-making processes"
-            />
-            <FeatureCard
-              icon={
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              }
-              title="Pain Point Analysis"
-              description="Identify user frustrations, challenges, and barriers to success"
-            />
-            <FeatureCard
-              icon={
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-              }
-              title="Goal Mapping"
-              description="Define user objectives, motivations, and success criteria"
-            />
-            <FeatureCard
-              icon={
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              }
-              title="Demographics"
-              description="Age ranges, locations, roles, and technology proficiency levels"
-            />
-            <FeatureCard
-              icon={
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-              }
-              title="Interview Guide"
-              description="Ready-to-use research questions for user interviews"
-            />
-            <FeatureCard
-              icon={
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-              }
-              title="Export to PDF"
-              description="Download professionally formatted persona documents"
-            />
+          <div className="feature-grid" style={{ marginTop: 28 }}>
+            {HOW_STEPS.map((s) => (
+              <FeatureCard
+                key={s.step}
+                step={s.step}
+                title={s.title}
+                meta={s.meta}
+                desc={s.desc}
+              />
+            ))}
           </div>
         </div>
       </section>
 
-      {/* PDF Output Section */}
-      <section className="border-t border-surface-light px-6 py-20">
-        <div className="mx-auto max-w-5xl">
-          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
-            {/* Left: Feature List */}
-            <div>
-              <h2 className="text-h1 text-white">Professional PDF Output</h2>
-              <p className="mt-3 text-text-secondary">
-                Every persona includes comprehensive documentation following
-                industry-standard structure, ready to share with your team or clients.
-              </p>
-
-              <ul className="mt-8 space-y-4">
-                {[
-                  "Cover page with brand colors",
-                  "Detailed persona profiles",
-                  "Behavior patterns and goals",
-                  "Pain points and frustrations",
-                  "Technology preferences",
-                  "Interview guide with questions",
-                  "Design implications and insights",
-                  "Research recommendations",
-                ].map((item) => (
-                  <li key={item} className="flex items-center gap-3">
-                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-accent/20">
-                      <svg
-                        className="h-3 w-3 text-accent"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={3}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    </div>
-                    <span className="text-text-secondary">{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Right: PDF Preview */}
-            <div className="relative">
-              <div className="rounded-xl border border-surface-light bg-white p-6 shadow-2xl">
-                <div className="mb-4 text-center">
-                  <div className="text-h2 text-primary">User Persona Guide</div>
-                  <div className="mt-1 text-body-sm text-text-secondary">Generated by Persona Builder</div>
-                </div>
-                <div className="mb-4 flex justify-center gap-2">
-                  {["#2383E2", "#1F1F1F", "#27C93F", "#FFBD2E"].map((color) => (
-                    <div
-                      key={color}
-                      className="h-6 w-6 rounded"
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
-                </div>
-                <div className="space-y-2">
-                  <div className="h-3 w-3/4 rounded bg-gray-200" />
-                  <div className="h-3 w-full rounded bg-gray-200" />
-                  <div className="h-3 w-5/6 rounded bg-gray-200" />
-                  <div className="h-3 w-2/3 rounded bg-gray-200" />
-                </div>
-              </div>
-              {/* Decorative shadow */}
-              <div className="absolute -bottom-4 -right-4 -z-10 h-full w-full rounded-xl bg-accent/10" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="border-t border-surface-light px-6 py-20">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-h1 text-white">Ready to Create Your Personas?</h2>
-          <p className="mt-3 text-text-secondary">
-            Join designers and product teams who use our tool to understand their users
-            quickly and professionally.
-          </p>
-          <button
-            onClick={() => onGetStarted()}
-            className="mt-8 inline-flex items-center gap-2 rounded-lg bg-accent px-8 py-4 font-medium text-white transition-colors hover:bg-accent-hover"
-          >
-            Get Started Free
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+      <section className="section">
+        <div
+          className="ss-container"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 64,
+            alignItems: "center",
+          }}
+        >
+          <div>
+            <span className="eyebrow">
+              <span className="dot" />output
+            </span>
+            <h2 className="h-section" style={{ marginTop: 6 }}>
+              A PDF you&apos;d hand to a director. <span className="muted">Properly typeset.</span>
+            </h2>
+            <p
+              className="lead"
+              style={{ margin: "14px 0 0", textAlign: "left", maxWidth: "none" }}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M14 5l7 7m0 0l-7 7m7-7H3"
-              />
-            </svg>
-          </button>
+              The output is a print-ready PDF designed for the workshop wall and the Notion handoff.
+              No marketing fluff — just the persona work, indexed and findable.
+            </p>
+            <ul className="bullet-list" style={{ marginTop: 24 }}>
+              {PDF_BULLETS.map((t, i) => (
+                <li key={i}>
+                  <I.Check size={13} /> {t}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <PdfPeek />
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-surface-light px-6 py-8">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <div className="flex items-center gap-2">
-            <svg
-              className="h-6 w-6 text-accent"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            <span className="font-medium text-white">Persona Builder</span>
-          </div>
-          <div className="text-body-sm text-text-secondary">
-            Made with <span className="text-error">♥</span> by Tom in Milwaukee, WI
+      <section className="section" id="faq">
+        <div className="ss-container-narrow">
+          <span className="eyebrow">
+            <span className="dot" />FAQ
+          </span>
+          <h2 className="h-section" style={{ marginTop: 6, textAlign: "left" }}>
+            Things worth asking.
+          </h2>
+          <div style={{ marginTop: 22, borderTop: "1px solid var(--surface-border)" }}>
+            {FAQS.map(([q, a], i) => (
+              <FaqRow key={i} q={q} a={a} />
+            ))}
           </div>
         </div>
-      </footer>
-    </div>
-  );
-}
+      </section>
 
-// Sub-components
-
-function PreviewCard({
-  title,
-  subtitle,
-  content,
-}: {
-  title: string;
-  subtitle?: string;
-  content: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-lg border border-surface-light bg-primary p-4">
-      <div className="mb-3 border-b border-surface-light pb-3">
-        <div className="text-body-sm font-medium text-white">{title}</div>
-        {subtitle && (
-          <div className="text-body-sm text-text-secondary">{subtitle}</div>
-        )}
-      </div>
-      {content}
-    </div>
-  );
-}
-
-function StepCard({
-  number,
-  title,
-  description,
-  hasConnector,
-}: {
-  number: string;
-  title: string;
-  description: string;
-  hasConnector?: boolean;
-}) {
-  return (
-    <div className="relative text-center">
-      {/* Connector line */}
-      {hasConnector && (
-        <div className="absolute left-1/2 top-8 hidden h-px w-full -translate-x-1/2 bg-surface-light md:block" />
-      )}
-
-      {/* Number circle */}
-      <div className="relative mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-surface-light bg-surface">
-        <span className="text-h2 text-accent">{number}</span>
-      </div>
-
-      <h3 className="text-h2 text-white">{title}</h3>
-      <p className="mt-2 text-body-sm text-text-secondary">{description}</p>
-    </div>
+      <AppFooter />
+    </>
   );
 }
 
 function FeatureCard({
   icon,
+  step,
   title,
-  description,
+  desc,
+  meta,
 }: {
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
+  step?: string;
   title: string;
-  description: string;
+  desc: string;
+  meta?: string;
 }) {
   return (
-    <div className="rounded-xl border border-surface-light bg-surface p-6 text-left transition-colors hover:border-accent/50">
-      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10 text-accent">
-        {icon}
+    <div className="feature-card">
+      <span className="feature-icon">
+        {step ? (
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontWeight: 700,
+              fontSize: 12,
+              color: "var(--brand)",
+            }}
+          >
+            {step}
+          </span>
+        ) : (
+          icon
+        )}
+      </span>
+      <div className="feature-title">{title}</div>
+      <div className="feature-desc">{desc}</div>
+      {meta && <div className="feature-meta">{meta}</div>}
+    </div>
+  );
+}
+
+function FaqRow({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={`faq-row${open ? " is-open" : ""}`}>
+      <button onClick={() => setOpen((o) => !o)}>
+        {q}
+        <I.Plus size={14} />
+      </button>
+      {open && <p>{a}</p>}
+    </div>
+  );
+}
+
+function PdfPeek() {
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: 360,
+        height: 480,
+        marginLeft: "auto",
+        maxWidth: "100%",
+      }}
+    >
+      <div
+        className="deck-page behind1"
+        style={{
+          position: "absolute",
+          inset: 0,
+          transform: "translate(-22px, 14px) rotate(-3deg)",
+        }}
+      >
+        <div style={{ height: 8, width: 60, background: "#e7e7eb", borderRadius: 2 }} />
       </div>
-      <h3 className="text-h3 text-white">{title}</h3>
-      <p className="mt-2 text-body-sm text-text-secondary">{description}</p>
+      <div
+        className="deck-page front"
+        style={{ position: "absolute", inset: 0, padding: "26px 28px" }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font-sans)",
+            fontWeight: 900,
+            fontSize: 22,
+            color: "#0a0a0a",
+            letterSpacing: "-0.02em",
+            lineHeight: 1.15,
+          }}
+        >
+          Stripe
+          <br />
+          User personas
+        </div>
+        <div style={{ marginTop: 6, fontSize: 11, color: "#6b7280" }}>Research deck · v1.0</div>
+        <div style={{ display: "flex", gap: 6, marginTop: 16 }}>
+          <span style={{ width: 28, height: 28, borderRadius: 6, background: "#635bff" }} />
+          <span style={{ width: 28, height: 28, borderRadius: 6, background: "#0a2540" }} />
+          <span style={{ width: 28, height: 28, borderRadius: 6, background: "#00d4ff" }} />
+          <span style={{ width: 28, height: 28, borderRadius: 6, background: "#ffb74d" }} />
+        </div>
+        <div style={{ marginTop: 22 }}>
+          <div style={{ fontWeight: 900, fontSize: 14, color: "#0a0a0a" }}>
+            The Embedding Engineer
+          </div>
+          <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+            Builder · Late-stage SaaS
+          </div>
+          <div style={{ marginTop: 14, height: 6, width: "82%", background: "#eee", borderRadius: 2 }} />
+          <div style={{ marginTop: 6, height: 6, width: "70%", background: "#eee", borderRadius: 2 }} />
+          <div style={{ marginTop: 6, height: 6, width: "78%", background: "#eee", borderRadius: 2 }} />
+        </div>
+        <div
+          style={{
+            position: "absolute",
+            bottom: 22,
+            left: 28,
+            right: 28,
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            color: "#a1a1aa",
+            display: "flex",
+            justifyContent: "space-between",
+          }}
+        >
+          <span>personas · v1.0</span>
+          <span>p.1</span>
+        </div>
+      </div>
     </div>
   );
 }
