@@ -142,32 +142,36 @@ export default function LandingPage({ onSubmit }: Props) {
             documenting goals, behaviors, pain points, and jobs-to-be-done — for every persona in your product.
           </p>
 
-          <div className="url-row">
+          <div className="input-row">
             <span className="scheme">https://</span>
             <input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="yoursite.com"
               onKeyDown={(e) => e.key === "Enter" && submit()}
+              aria-label="Website URL"
             />
-            <button
-              className="btn btn-primary"
-              onClick={submit}
-              disabled={!canSubmit}
-              style={{ gap: 8 }}
-            >
-              Generate <I.Arrow size={14} />
-            </button>
           </div>
 
-          <div className="audience-row">
-            <span className="label">Audience</span>
+          <div className="input-row">
+            <span className="scheme">audience</span>
             <input
               value={audience}
               onChange={(e) => setAudience(e.target.value)}
               placeholder="e.g. solo founders shipping side projects"
               onKeyDown={(e) => e.key === "Enter" && submit()}
+              aria-label="Target audience"
             />
+          </div>
+
+          <div className="submit-row">
+            <button
+              className="btn btn-primary btn-lg"
+              onClick={submit}
+              disabled={!canSubmit}
+            >
+              Generate <I.Arrow size={14} />
+            </button>
           </div>
 
           <div className="try-row">
