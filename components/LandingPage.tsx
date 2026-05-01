@@ -115,12 +115,12 @@ export default function LandingPage({ onSubmit }: Props) {
 
   const submit = () => {
     const u = url.trim();
-    const a = audience.trim();
-    if (!u || !a) return;
+    if (!u) return;
+    const a = audience.trim() || "general audience";
     onSubmit({ url: u, audience: a });
   };
 
-  const canSubmit = url.trim().length > 0 && audience.trim().length > 0;
+  const canSubmit = url.trim().length > 0;
 
   return (
     <>
