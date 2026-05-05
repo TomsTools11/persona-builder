@@ -9,7 +9,7 @@ import type { GenerationResult, Persona } from "@/types";
 interface Props {
   result: GenerationResult;
   sourceUrl: string;
-  audience: string;
+  description: string;
   isDownloading: boolean;
   onGenerateNew: () => void;
   onDownloadPDF: () => void;
@@ -18,7 +18,7 @@ interface Props {
 export default function OutputScreen({
   result,
   sourceUrl,
-  audience,
+  description,
   isDownloading,
   onGenerateNew,
   onDownloadPDF,
@@ -179,7 +179,7 @@ export default function OutputScreen({
                 >
                   <I.External size={12} /> {sourceUrl}
                 </p>
-                {audience && (
+                {description && (
                   <p
                     style={{
                       marginTop: 6,
@@ -187,9 +187,9 @@ export default function OutputScreen({
                       color: "var(--text-tertiary)",
                     }}
                   >
-                    Audience cue:{" "}
+                    Description:{" "}
                     <span style={{ color: "var(--text-secondary)" }}>
-                      &ldquo;{audience}&rdquo;
+                      &ldquo;{description}&rdquo;
                     </span>
                   </p>
                 )}

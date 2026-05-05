@@ -6,7 +6,7 @@ import AppFooter from "./AppFooter";
 import { I } from "./Icons";
 
 interface Props {
-  onSubmit: (data: { url: string; audience: string }) => void;
+  onSubmit: (data: { url: string; description: string }) => void;
 }
 
 const TRY_URLS = ["stripe.com", "linear.app", "notion.so", "vercel.com"];
@@ -111,16 +111,23 @@ const FAQS: [string, string][] = [
 
 export default function LandingPage({ onSubmit }: Props) {
   const [url, setUrl] = useState("");
-  const [audience, setAudience] = useState("");
+  const [description, setDescription] = useState("");
 
   const submit = () => {
     const u = url.trim();
-    const a = audience.trim();
-    if (!u || !a) return;
-    onSubmit({ url: u, audience: a });
+    const d = description.trim();
+    if (!u || !d) return;
+    onSubmit({ url: u, description: d });
   };
 
-  const canSubmit = url.trim().length > 0 && audience.trim().length > 0;
+  const trimmedUrl = url.trim();
+  const trimmedDesc = description.trim();
+  const hasUrl = trimmedUrl.length > 0;
+  const hasDesc = trimmedDesc.length > 0;
+  const canSubmit = hasUrl && hasDesc;
+  const descCount = trimmedDesc.length;
+  const descMin = 20;
+  const descShort = hasDesc && descCount < descMin;
 
   return (
     <>
@@ -138,46 +145,99 @@ export default function LandingPage({ onSubmit }: Props) {
           </h1>
 
           <p className="lead" style={{ marginTop: 18 }}>
-            Enter a website URL and a target audience. Get a comprehensive, beautifully formatted PDF
+            Describe your idea, drop in a website URL. Get a comprehensive, beautifully formatted PDF
             documenting goals, behaviors, pain points, and jobs-to-be-done — for every persona in your product.
           </p>
 
-          <div className="url-row">
-            <span className="scheme">https://</span>
-            <input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="yoursite.com"
-              onKeyDown={(e) => e.key === "Enter" && submit()}
-            />
+          <form
+            className="builder-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              submit();
+            }}
+            noValidate
+          >
+            <div className={`field${hasDesc ? " is-filled" : ""}`}>
+              <div className="field-head">
+                <span className="step-marker">01</span>
+                <label htmlFor="pb-desc" className="field-label">
+                  Describe your idea
+                </label>
+                <span className="req-mark">required</span>
+              </div>
+              <textarea
+                id="pb-desc"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. A native iOS app that turns voice memos into structured project notes for solo consultants"
+                rows={3}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
+                }}
+              />
+              <div className="field-foot">
+                <span className="hint">
+                  One or two sentences on the product, service, or idea — the more specific, the sharper the personas.
+                </span>
+                <span className={`counter${descShort ? " is-short" : ""}`}>
+                  {descCount > 0 ? `${descCount} chars` : `min ${descMin}`}
+                </span>
+              </div>
+            </div>
+
+            <div className={`field field-url${hasUrl ? " is-filled" : ""}`}>
+              <div className="field-head">
+                <span className="step-marker">02</span>
+                <label htmlFor="pb-url" className="field-label">
+                  Website URL
+                </label>
+                <span className="req-mark">required</span>
+              </div>
+              <div className="url-input">
+                <span className="scheme">https://</span>
+                <input
+                  id="pb-url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="yoursite.com"
+                  onKeyDown={(e) => e.key === "Enter" && submit()}
+                />
+              </div>
+              <div className="field-foot">
+                <span className="hint">Public homepage or landing page — we crawl it for context.</span>
+                <div className="try-inline">
+                  <span className="try-label">try:</span>
+                  {TRY_URLS.map((u) => (
+                    <button
+                      key={u}
+                      type="button"
+                      className="try-chip"
+                      onClick={() => setUrl(u)}
+                    >
+                      {u}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <button
-              className="btn btn-primary"
-              onClick={submit}
+              type="submit"
+              className="btn btn-primary submit-btn"
               disabled={!canSubmit}
-              style={{ gap: 8 }}
             >
-              Generate <I.Arrow size={14} />
+              <span>
+                {!hasDesc && !hasUrl
+                  ? "Fill both fields to generate"
+                  : !hasDesc
+                  ? "Add a description to continue"
+                  : !hasUrl
+                  ? "Add a URL to continue"
+                  : "Generate personas"}
+              </span>
+              <I.Arrow size={14} />
             </button>
-          </div>
-
-          <div className="audience-row">
-            <span className="label">Audience</span>
-            <input
-              value={audience}
-              onChange={(e) => setAudience(e.target.value)}
-              placeholder="e.g. solo founders shipping side projects"
-              onKeyDown={(e) => e.key === "Enter" && submit()}
-            />
-          </div>
-
-          <div className="try-row">
-            <span className="label">try:</span>
-            {TRY_URLS.map((u) => (
-              <button key={u} className="try-chip" onClick={() => setUrl(u)}>
-                {u}
-              </button>
-            ))}
-          </div>
+          </form>
 
           <div className="stat-row">
             <div className="stat">

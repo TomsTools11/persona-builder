@@ -319,103 +319,177 @@ select {
   padding: 0 22px;
 }
 
-/* ---------- URL input row ---------- */
-.url-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* ---------- Builder form ---------- */
+.builder-form {
+  display: grid;
+  gap: 14px;
+  max-width: 580px;
+  margin: 36px auto 0;
+  text-align: left;
+}
+
+.builder-form .field {
+  position: relative;
   background: var(--surface-2);
   border: 1px solid var(--surface-border);
-  border-radius: 12px;
-  padding: 6px 6px 6px 16px;
-  max-width: 540px;
-  margin: 32px auto 0;
+  border-radius: 14px;
+  padding: 14px 16px 12px;
   transition:
     border-color var(--dur-base) var(--ease-out),
-    box-shadow var(--dur-base) var(--ease-out);
+    box-shadow var(--dur-base) var(--ease-out),
+    background var(--dur-base) var(--ease-out);
 }
-.url-row:focus-within {
+.builder-form .field:focus-within {
   border-color: var(--brand);
   box-shadow: 0 0 0 4px var(--brand-ring);
 }
-.url-row .scheme {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  color: var(--text-tertiary);
+.builder-form .field.is-filled {
+  border-color: var(--surface-border-strong);
+  background: var(--surface-3);
 }
-.url-row input {
-  flex: 1;
-  height: 40px;
-  background: transparent;
-  border: 0;
-  color: var(--text-primary);
-  font-size: 15px;
-  font-family: var(--font-sans);
-  outline: none;
-  min-width: 0;
-}
-.url-row input::placeholder {
-  color: var(--text-tertiary);
-}
-
-/* ---------- Audience input row ---------- */
-.audience-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  max-width: 540px;
-  margin: 14px auto 0;
-  background: transparent;
-  border: 1px dashed var(--surface-border);
-  border-radius: 10px;
-  padding: 8px 14px;
-  transition: border-color var(--dur-base) var(--ease-out);
-}
-.audience-row:focus-within {
+.builder-form .field.is-filled:focus-within {
   border-color: var(--brand);
-  border-style: solid;
-}
-.audience-row .label {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.audience-row input {
-  flex: 1;
-  background: transparent;
-  border: 0;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-family: var(--font-sans);
-  outline: none;
-  height: 28px;
-  min-width: 0;
-}
-.audience-row input::placeholder {
-  color: var(--text-tertiary);
 }
 
-/* ---------- Try chips ---------- */
-.try-row {
+.builder-form .field-head {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-bottom: 6px;
+}
+
+.builder-form .step-marker {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  margin-top: 14px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--surface-border);
+  transition:
+    color var(--dur-base) var(--ease-out),
+    background var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+.builder-form .field.is-filled .step-marker {
+  color: var(--brand);
+  background: var(--brand-soft);
+  border-color: var(--brand-soft);
+}
+.builder-form .field:focus-within .step-marker {
+  color: var(--brand);
+  background: var(--brand-soft);
+  border-color: var(--brand-soft);
+}
+
+.builder-form .field-label {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.005em;
+}
+
+.builder-form .req-mark {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-1);
+}
+.builder-form .field.is-filled .req-mark {
+  color: var(--brand);
+  border-color: var(--brand-soft);
+  background: var(--brand-soft);
+}
+
+.builder-form textarea,
+.builder-form .url-input input {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  outline: none;
+  resize: none;
+  padding: 4px 0 6px;
+}
+.builder-form textarea::placeholder,
+.builder-form .url-input input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.builder-form .url-input {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 0 4px;
+}
+.builder-form .url-input .scheme {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text-tertiary);
+}
+
+.builder-form .field-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--surface-border);
   flex-wrap: wrap;
 }
-.try-row .label {
-  font-size: 13px;
+.builder-form .field-foot .hint {
+  font-size: 12px;
   color: var(--text-tertiary);
+  flex: 1;
+  min-width: 200px;
+  line-height: 1.5;
 }
+.builder-form .field-foot .counter {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+}
+.builder-form .field-foot .counter.is-short {
+  color: #f0a44a;
+}
+
+.builder-form .try-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.builder-form .try-inline .try-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
 .try-chip {
   font-family: var(--font-mono);
   font-size: 12px;
-  background: var(--surface-2);
+  background: var(--surface-1);
   border: 1px solid var(--surface-border);
-  padding: 5px 10px;
+  padding: 4px 10px;
   border-radius: 999px;
   color: var(--text-secondary);
   cursor: pointer;
@@ -425,6 +499,25 @@ select {
   color: var(--brand);
   border-color: var(--brand-soft);
   background: var(--brand-soft);
+}
+
+.builder-form .submit-btn {
+  margin-top: 6px;
+  height: 52px;
+  width: 100%;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+  gap: 10px;
+  letter-spacing: -0.005em;
+}
+.builder-form .submit-btn:disabled {
+  background: var(--surface-3);
+  color: var(--text-tertiary);
+  border: 1px solid var(--surface-border);
+}
+.builder-form .submit-btn:not(:disabled) {
+  box-shadow: 0 6px 24px -8px var(--brand-ring);
 }
 
 /* ---------- Stat row ---------- */
