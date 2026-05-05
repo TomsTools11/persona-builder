@@ -6,7 +6,7 @@ import { I } from "./Icons";
 
 interface Props {
   url: string;
-  audience: string;
+  description: string;
   elapsedTime: number;
   isFinishing: boolean;
   onCancel: () => void;
@@ -50,7 +50,7 @@ const fmtElapsed = (s: number) => {
 
 export default function GenerationProgress({
   url,
-  audience,
+  description,
   elapsedTime,
   isFinishing,
   onCancel,
@@ -125,9 +125,21 @@ export default function GenerationProgress({
           <div className="pill" style={{ marginTop: 22 }}>
             <I.Globe size={12} />
             <code>https://{url}</code>
-            <span className="dot-sep" style={{ color: "var(--text-tertiary)" }}>
-              {audience || "general audience"}
-            </span>
+            {description && (
+              <span
+                className="dot-sep"
+                style={{
+                  color: "var(--text-tertiary)",
+                  maxWidth: 360,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+                title={description}
+              >
+                {description}
+              </span>
+            )}
           </div>
         </div>
       </section>

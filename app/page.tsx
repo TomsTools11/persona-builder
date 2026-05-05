@@ -8,13 +8,13 @@ import type { AppState, GenerationResult } from "@/types";
 
 interface FormParams {
   url: string;
-  audience: string;
+  description: string;
 }
 
 export default function Home() {
   const [appState, setAppState] = useState<AppState>("landing");
   const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null);
-  const [params, setParams] = useState<FormParams>({ url: "", audience: "" });
+  const [params, setParams] = useState<FormParams>({ url: "", description: "" });
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isFinishing, setIsFinishing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -37,8 +37,8 @@ export default function Home() {
     };
   }, [appState]);
 
-  const submit = async ({ url, audience }: FormParams) => {
-    setParams({ url, audience });
+  const submit = async ({ url, description }: FormParams) => {
+    setParams({ url, description });
     setIsFinishing(false);
     setError(null);
     setAppState("generating");
@@ -49,7 +49,7 @@ export default function Home() {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: audience, websiteUrl: url }),
+        body: JSON.stringify({ description, websiteUrl: url }),
         signal: abortControllerRef.current.signal,
       });
 
@@ -121,7 +121,7 @@ export default function Home() {
     return (
       <GenerationProgress
         url={params.url}
-        audience={params.audience}
+        description={params.description}
         elapsedTime={elapsedTime}
         isFinishing={isFinishing}
         onCancel={handleCancel}
@@ -134,7 +134,7 @@ export default function Home() {
       <OutputScreen
         result={generationResult}
         sourceUrl={params.url}
-        audience={params.audience}
+        description={params.description}
         isDownloading={isDownloading}
         onGenerateNew={handleGenerateNew}
         onDownloadPDF={handleDownloadPDF}
