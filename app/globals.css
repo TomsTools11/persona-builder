@@ -322,14 +322,26 @@ select {
 /* ---------- Builder form ---------- */
 .builder-form {
   display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 14px;
-  max-width: 580px;
+  max-width: 920px;
   margin: 36px auto 0;
   text-align: left;
+}
+.builder-form .submit-btn {
+  grid-column: 1 / -1;
+}
+@media (max-width: 720px) {
+  .builder-form {
+    grid-template-columns: 1fr;
+    max-width: 580px;
+  }
 }
 
 .builder-form .field {
   position: relative;
+  display: flex;
+  flex-direction: column;
   background: var(--surface-2);
   border: 1px solid var(--surface-border);
   border-radius: 14px;
@@ -448,10 +460,13 @@ select {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 10px;
+  margin-top: auto;
   padding-top: 10px;
   border-top: 1px dashed var(--surface-border);
   flex-wrap: wrap;
+}
+.builder-form .url-input {
+  margin-bottom: 10px;
 }
 .builder-form .field-foot .hint {
   font-size: 12px;
